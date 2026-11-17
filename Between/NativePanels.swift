@@ -24,7 +24,7 @@ extension ContentView {
             HStack(spacing:9){
                 TextField(l("说点什么…","Say something kind…"),text:$composer).font(.system(size:16)).padding(.horizontal,13).padding(.vertical,13).frame(minHeight:48).background(Color(hex:0xf7f4f1),in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xeee8e4),lineWidth:1)).focused($composerFocused)
                 Button {sendPreview(chosen)} label:{HStack(spacing:4){Text(l("发送","Send"));Text("↑")}.font(.system(size:15,weight:.bold)).foregroundColor(.white).padding(.horizontal,16).frame(minHeight:44).background(Color(hex:chosen == .devil ? 0xc6786d:0x628fa9),in:RoundedRectangle(cornerRadius:16))}.buttonStyle(PressScale())
-            }.padding(.horizontal,20).padding(.top,12).padding(.bottom,max(bottom+12,keyboardHeight+8)).background(chosen.background).overlay(Rectangle().fill(Color(hex:0xeee5e2)).frame(height:1),alignment:.top)
+            }.padding(.horizontal,16).padding(.top,10).padding(.bottom,max(bottom+12,keyboardHeight+8)).background(chosen.background).overlay(Rectangle().fill(Color(hex:0xeee5e2)).frame(height:1),alignment:.top)
         }.frame(width:width,height:height).background(chosen.background)
             .simultaneousGesture(DragGesture(minimumDistance:14).onChanged{value in
                 guard abs(value.translation.width)>abs(value.translation.height),!composerFocused,!settling else{return}
@@ -48,6 +48,7 @@ extension ContentView {
     }
     func commentCard(_ answer:NativeAnswer)->some View {
         let sid = model.current?.id ?? ""
+        let mine = sid.hasPrefix("local-")
         let isBest = best["\(sid)|\(answer.side)"] == answer.id
         let isLiked = liked[answer.id] ?? false
         return VStack(alignment:.leading,spacing:0){
@@ -70,10 +71,12 @@ extension ContentView {
                         .foregroundColor(isLiked ? Color(hex:0xb85657):Color(hex:0x897a7a)).padding(.horizontal,11).frame(height:38)
                         .background(Color(hex:isLiked ? 0xf9e6e2:0xf8f4f2),in:Capsule())
                 }.buttonStyle(PressScale())
-                Button {if isBest {best["\(sid)|\(answer.side)"]=nil}else{best["\(sid)|\(answer.side)"]=answer.id};persistLocal()} label:{
-                    Text(isBest ? "✦ "+l("取消最佳","Remove best"):l("选为最佳","Choose best")).font(.system(size:12))
-                        .foregroundColor(Color(hex:0xa87336)).padding(.horizontal,11).frame(height:38).background(Color(hex:0xf7ead6).opacity(isBest ? 1:0.6),in:Capsule())
-                }.buttonStyle(PressScale())
+                if mine {
+                    Button {if isBest {best["\(sid)|\(answer.side)"]=nil}else{best["\(sid)|\(answer.side)"]=answer.id};persistLocal()} label:{
+                        Text(isBest ? "✦ "+l("取消最佳","Remove best"):l("选为最佳","Choose best")).font(.system(size:12))
+                            .foregroundColor(Color(hex:0xa87336)).padding(.horizontal,8).frame(height:38)
+                    }.buttonStyle(PressScale())
+                }
                 Spacer(minLength:0)
                 Button {withAnimation(transitionAnimation){selectedReply=answer}} label:{
                     Text(l("回复","Reply")).font(.system(size:12)).foregroundColor(Color(hex:0x897a7a)).padding(.horizontal,11).frame(height:38).background(Color(hex:0xf8f4f2),in:Capsule())
@@ -373,7 +376,7 @@ extension ContentView {
         let dialogH = max(280,min(600,height-topPad-bottom-28-keyboardHeight))
         let accent = Color(hex:answer.side=="devil" ? 0xc6786d:0x628fa9)
         return ZStack(alignment:.bottom){
-            Color(hex:0x302532).opacity(0.30)
+            Color(hex:0x302532).opacity(0.30).contentShape(Rectangle()).onTapGesture{withAnimation(transitionAnimation){selectedReply=nil}}
             VStack(alignment:.leading,spacing:0){
                 HStack(spacing:13){
                     Button {withAnimation(transitionAnimation){selectedReply=nil}} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x5d5055)).frame(width:42,height:42).background(Color(hex:0xf2eae6),in:Circle())}.accessibilityLabel(l("返回评论","Back to comments"))
