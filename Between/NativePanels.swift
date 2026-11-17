@@ -20,9 +20,9 @@ extension ContentView {
                 }.padding(.horizontal,20).padding(.top,10).padding(.bottom,18)
             }
             HStack(spacing:9){
-                TextField(l("说点什么…","Say something kind…"),text:$composer).font(.system(size:16)).padding(.horizontal,13).padding(.vertical,13).frame(minHeight:48).background(Color(hex:0xf3efed),in:RoundedRectangle(cornerRadius:16)).focused($composerFocused)
-                Button {sendPreview(chosen)} label:{Text(l("发送","Send")).font(.system(size:15,weight:.bold)).foregroundColor(.white).padding(.horizontal,16).frame(minHeight:44).background(Color(hex:0x413942),in:RoundedRectangle(cornerRadius:16))}
-            }.padding(.horizontal,20).padding(.top,12).padding(.bottom,bottom+12).background(chosen.background).overlay(Rectangle().fill(Color(hex:0xeee5e2)).frame(height:1),alignment:.top)
+                TextField(l("说点什么…","Say something kind…"),text:$composer).font(.system(size:16)).padding(.horizontal,13).padding(.vertical,13).frame(minHeight:48).background(Color(hex:0xf7f4f1),in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xeee8e4),lineWidth:1)).focused($composerFocused)
+                Button {sendPreview(chosen)} label:{Text(l("发送","Send")).font(.system(size:15,weight:.bold)).foregroundColor(.white).padding(.horizontal,16).frame(minHeight:44).background(Color(hex:chosen == .devil ? 0xc6786d:0x628fa9),in:RoundedRectangle(cornerRadius:16))}.buttonStyle(PressScale())
+            }.padding(.horizontal,20).padding(.top,12).padding(.bottom,max(bottom+12,keyboardHeight+8)).background(chosen.background).overlay(Rectangle().fill(Color(hex:0xeee5e2)).frame(height:1),alignment:.top)
         }.frame(width:width,height:height).background(chosen.background)
             .simultaneousGesture(DragGesture(minimumDistance:14).onChanged{value in
                 guard abs(value.translation.width)>abs(value.translation.height),!composerFocused,!settling else{return}
@@ -42,7 +42,7 @@ extension ContentView {
                 .foregroundColor(Color(hex:chosen==value ? (value == .devil ? 0x994d49:0x426d88):0x756a6b))
                 .padding(.horizontal,16).padding(.vertical,10)
                 .background(Color(hex:chosen==value ? (value == .devil ? 0xf8d5ce:0xd8eaf5):0xf4efed),in:Capsule())
-        }
+        }.buttonStyle(PressScale())
     }
     func commentCard(_ answer:NativeAnswer)->some View {
         let sid = model.current?.id ?? ""
@@ -67,15 +67,15 @@ extension ContentView {
                     HStack(spacing:5){Image(systemName:isLiked ? "heart.fill":"heart").font(.system(size:15,weight:.light));Text("\(answer.likes + (isLiked ? 1:0))").font(.system(size:12))}
                         .foregroundColor(isLiked ? Color(hex:0xb85657):Color(hex:0x897a7a)).padding(.horizontal,11).frame(height:38)
                         .background(Color(hex:isLiked ? 0xf9e6e2:0xf8f4f2),in:Capsule())
-                }
+                }.buttonStyle(PressScale())
                 Button {if isBest {best["\(sid)|\(answer.side)"]=nil}else{best["\(sid)|\(answer.side)"]=answer.id};persistLocal()} label:{
                     Text(isBest ? "✦ "+l("取消最佳","Remove best"):l("选为最佳","Choose best")).font(.system(size:12))
                         .foregroundColor(Color(hex:0xa87336)).padding(.horizontal,11).frame(height:38).background(Color(hex:0xf7ead6).opacity(isBest ? 1:0.6),in:Capsule())
-                }
+                }.buttonStyle(PressScale())
                 Spacer(minLength:0)
                 Button {withAnimation(transitionAnimation){selectedReply=answer}} label:{
                     Text(l("回复","Reply")).font(.system(size:12)).foregroundColor(Color(hex:0x897a7a)).padding(.horizontal,11).frame(height:38).background(Color(hex:0xf8f4f2),in:Capsule())
-                }
+                }.buttonStyle(PressScale())
             }.padding(.top,12)
         }.padding(16).frame(maxWidth:.infinity,alignment:.leading)
             .background(Color.white,in:RoundedRectangle(cornerRadius:18))
@@ -87,14 +87,14 @@ extension ContentView {
     func closeComments(){
         composerFocused=false;settling=true
         withAnimation(transitionAnimation){campProgress=0}
-        DispatchQueue.main.asyncAfter(deadline:.now()+0.35){camp=nil;settling=false;axis=nil}
+        DispatchQueue.main.asyncAfter(deadline:.now()+0.35){camp=nil;settling=false;axis=nil;resetIdleHints()}
     }
     func sendPreview(_ chosen:NativeCamp){
         let text=composer.trimmingCharacters(in:.whitespacesAndNewlines);guard !text.isEmpty else{return}
         guard text.count<=1000 else{toast(l("最多输入 1000 字","Limit: 1,000 characters"));return}
         guard model.preview else{toast(l("原生发布接口尚未接入审核，此预览暂不提交内容。","Posting and moderation are not connected in this native preview."));return}
         guard model.stories.indices.contains(model.index) else{return}
-        model.stories[model.index].answers.append(NativeAnswer(id:UUID().uuidString,author:l("你 · 预览","You · preview"),side:chosen.rawValue,text:text,likes:0,replies:[]));composer="";composerFocused=false
+        model.stories[model.index].answers.append(NativeAnswer(id:UUID().uuidString,author:l("你 · 预览","You · preview"),side:chosen.rawValue,text:text,likes:0,replies:[]));composer="";composerFocused=false;persistLocal();toast(l("已发送","Sent"))
     }
 
     // MARK: - Utility sheets
@@ -137,8 +137,8 @@ extension ContentView {
                     Text(l("烦恼和公开讨论将在 24 小时后消失。其他人可以在到期前保存私密快照。","The public story and discussion disappear after 24 hours. Others can save a private snapshot before then."))
                 }.font(.system(size:12)).foregroundColor(Color(hex:0x8c7b72)).padding(12).frame(maxWidth:.infinity,alignment:.leading).background(Color(hex:0xf8f2ec),in:RoundedRectangle(cornerRadius:13)).padding(.top,14)
                 Spacer(minLength:12)
-                Button {publishStory()} label:{HStack(spacing:6){Text(l("匿名发布","Share anonymously"));Text("↗")}.font(.system(size:15,weight:.bold)).foregroundColor(.white).frame(maxWidth:.infinity,minHeight:48).background(Color(hex:0xc8786d),in:RoundedRectangle(cornerRadius:15))}
-            }.padding(.horizontal,20).padding(.bottom,bottom+20)
+                Button {publishStory()} label:{HStack(spacing:6){Text(l("匿名发布","Share anonymously"));Text("↗")}.font(.system(size:15,weight:.bold)).foregroundColor(.white).frame(maxWidth:.infinity,minHeight:48).background(Color(hex:0xc8786d),in:RoundedRectangle(cornerRadius:15))}.buttonStyle(PressScale())
+            }.padding(.horizontal,20).padding(.bottom,max(bottom+20,keyboardHeight+16))
         }.frame(width:width,height:height*0.88,alignment:.top).background(Color(hex:0xfffbf9)).clipShape(TopRoundedShape(radius:26)).position(x:width/2,y:height-height*0.88/2)
     }
     func publishStory(){
@@ -165,7 +165,7 @@ extension ContentView {
         Button(action:action,label:{
             HStack{Text(title);Spacer()}.font(.system(size:15)).foregroundColor(Color(hex:0x59484b)).padding(15).frame(maxWidth:.infinity)
                 .background(.white,in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xeee7e4),lineWidth:1))
-        })
+        }).buttonStyle(PressScale())
     }
     func saveSnapshot(){
         guard let story=model.current else{return}
@@ -227,7 +227,7 @@ extension ContentView {
                 TextEditor(text:$replyText).font(.system(size:16)).padding(12).frame(minHeight:150,alignment:.topLeading).background(Color(hex:0xf7f1ee),in:RoundedRectangle(cornerRadius:17)).overlay(RoundedRectangle(cornerRadius:17).stroke(Color(hex:0xf0e7e2),lineWidth:1))
                     .overlay(alignment:.topLeading){if replyText.isEmpty{Text(l("后来怎么样了？","What happened next?")).font(.system(size:16)).foregroundColor(Color(hex:0xb3a5a0)).padding(.leading,17).padding(.top,22).allowsHitTesting(false)}}
                 Button {saveUpdate()} label:{Text(l("保存进展","Save update")).font(.system(size:15,weight:.bold)).foregroundColor(.white).frame(maxWidth:.infinity,minHeight:46).background(Color(hex:0xc8786d),in:RoundedRectangle(cornerRadius:14))}
-            }.padding(.horizontal,20).padding(.bottom,bottom+20)
+            }.padding(.horizontal,20).padding(.bottom,max(bottom+20,keyboardHeight+16))
             Spacer(minLength:0)
         }.frame(width:width,height:height,alignment:.top).background(Color(hex:0xfffbf9))
     }
@@ -245,6 +245,7 @@ extension ContentView {
         model.stories[si].answers[ai].replies.append(NativeReply(id:UUID().uuidString,author:l("你 · 预览","You · preview"),text:text))
         selectedReply=model.stories[si].answers[ai]
         replyText=""
+        persistLocal()
     }
     func detailPage(_ story:NativeStory,width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
         VStack(alignment:.leading,spacing:0){
@@ -363,37 +364,61 @@ extension ContentView {
     }
 
     // MARK: - Reply layer
-    func replyOverlay(_ answer:NativeAnswer,width:CGFloat,height:CGFloat,top:CGFloat)->some View {
-        VStack(alignment:.leading,spacing:0){
-            HStack(spacing:10){
-                Button {withAnimation(transitionAnimation){selectedReply=nil}} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x5d5055)).frame(width:42,height:42).background(Color(hex:0xf2eae6),in:Circle())}.accessibilityLabel(l("返回评论","Back to comments"))
-                Text(l("回复","Replies")).font(.system(size:19,weight:.bold))
-                Spacer()
-            }.padding(.horizontal,20).padding(.top,top+18).padding(.bottom,16)
-            ScrollView {
-                VStack(alignment:.leading,spacing:12){
-                    VStack(alignment:.leading,spacing:0){
-                        Text(answer.author).font(.system(size:12,weight:.bold)).foregroundColor(Color(hex:0x9a8888))
-                        Text(answer.text).font(.system(size:14)).lineSpacing(max(0,14*1.6-UIFont.systemFont(ofSize:14).lineHeight)).padding(.vertical,12)
-                    }.padding(16).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:18)).overlay(RoundedRectangle(cornerRadius:18).stroke(Color(hex:0xf0e9e7),lineWidth:1)).shadow(color:Color(hex:0x654c53).opacity(0.09),radius:12,y:8)
-                    Text(l("全部回复","Replies")).font(.system(size:12,weight:.bold)).foregroundColor(Color(hex:0x9a8888)).padding(.top,4)
-                    if answer.replies.isEmpty {
-                        Text(l("还没有回复，来接住这句话吧。","No replies yet. Be the first to respond.")).font(.system(size:14)).foregroundColor(Color(hex:0xa09494)).frame(maxWidth:.infinity).padding(.vertical,30)
-                    } else {
-                        ForEach(Array(answer.replies.enumerated()),id:\.offset){ _,reply in
-                            HStack(alignment:.top,spacing:0){
-                                Rectangle().fill(Color(hex:0xe7dedc)).frame(width:2)
-                                (Text(reply.author).font(.system(size:12,weight:.bold))+Text(" ")+Text(reply.text).font(.system(size:13))).foregroundColor(Color(hex:0x817276)).padding(.leading,10)
-                            }.fixedSize(horizontal:false,vertical:true)
-                        }
+    func replyOverlay(_ answer:NativeAnswer,width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
+        let topPad = keyboardHeight > 0 ? 12:min(max(height*0.21,150),180)
+        let dialogH = max(280,min(600,height-topPad-bottom-28-keyboardHeight))
+        let accent = Color(hex:answer.side=="devil" ? 0xc6786d:0x628fa9)
+        return ZStack(alignment:.bottom){
+            Color(hex:0x302532).opacity(0.30)
+            VStack(alignment:.leading,spacing:0){
+                HStack(spacing:13){
+                    Button {withAnimation(transitionAnimation){selectedReply=nil}} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x5d5055)).frame(width:42,height:42).background(Color(hex:0xf2eae6),in:Circle())}.accessibilityLabel(l("返回评论","Back to comments"))
+                    VStack(alignment:.leading,spacing:3){
+                        Text(l("回复","Replies")).font(.system(size:18,weight:.bold))
+                        Text("\(answer.replies.count) \(l("条回复","replies"))").font(.system(size:11)).foregroundColor(Color(hex:0x988b88))
                     }
-                }.padding(.horizontal,20).padding(.bottom,18)
-            }
-            HStack(spacing:9){
-                TextField(l("写下回复…","Write a reply…"),text:$replyText).font(.system(size:16)).padding(.horizontal,13).padding(.vertical,13).frame(minHeight:48).background(Color(hex:0xf3efed),in:RoundedRectangle(cornerRadius:16))
-                Button {appendReply(answer)} label:{Text(l("发送","Send")).font(.system(size:15,weight:.bold)).foregroundColor(.white).padding(.horizontal,16).frame(minHeight:44).background(Color(hex:0x413942),in:RoundedRectangle(cornerRadius:16))}
-            }.padding(.horizontal,20).padding(.top,12)
-        }.frame(width:width,height:height,alignment:.top).background(Color(hex:0xfffaf8))
+                    Spacer(minLength:0)
+                }.padding(.horizontal,20).padding(.top,18).padding(.bottom,103)
+                ScrollView {
+                    VStack(alignment:.leading,spacing:12){
+                        VStack(alignment:.leading,spacing:0){
+                            HStack{
+                                Text(answer.author).font(.system(size:12,weight:.bold)).foregroundColor(Color(hex:0x9a8888))
+                                if answer.author.contains("AI") { Text("AI").font(.system(size:9,weight:.bold)).foregroundColor(Color(hex:0xa87336)).padding(.horizontal,5).padding(.vertical,2).background(Color(hex:0xf7ead6),in:Capsule()) }
+                                Spacer()
+                            }
+                            Text(answer.text).font(.system(size:14)).lineSpacing(max(0,14*1.6-UIFont.systemFont(ofSize:14).lineHeight)).fixedSize(horizontal:false,vertical:true).padding(.vertical,12)
+                            HStack(spacing:5){
+                                Image(systemName:"heart").font(.system(size:14,weight:.light))
+                                Text("\(answer.likes)").font(.system(size:12))
+                            }.foregroundColor(Color(hex:0x897a7a)).padding(.horizontal,11).frame(height:36).background(Color(hex:0xf8f4f2),in:Capsule())
+                        }.padding(16).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:18)).overlay(RoundedRectangle(cornerRadius:18).stroke(Color(hex:0xf0e9e7),lineWidth:1)).shadow(color:Color(hex:0x654c53).opacity(0.09),radius:12,y:8)
+                        Text(l("全部回复","Replies")).font(.system(size:12,weight:.bold)).foregroundColor(Color(hex:0x9a8888)).padding(.top,6)
+                        if answer.replies.isEmpty {
+                            Text(l("还没有回复，来接住这句话吧。","No replies yet. Be the first to respond.")).font(.system(size:14)).foregroundColor(Color(hex:0xa09494)).frame(maxWidth:.infinity).padding(.vertical,30)
+                        } else {
+                            ForEach(Array(answer.replies.enumerated()),id:\.offset){ _,reply in
+                                HStack(alignment:.top,spacing:10){
+                                    Text("✦").font(.system(size:13)).foregroundColor(Color(hex:0xd9a89c)).frame(width:26,height:26).background(Color(hex:0xfaf0eb),in:Circle())
+                                    VStack(alignment:.leading,spacing:4){
+                                        Text(reply.author).font(.system(size:12,weight:.bold)).foregroundColor(Color(hex:0x817276))
+                                        Text(reply.text).font(.system(size:13)).foregroundColor(Color(hex:0x6d5f66)).lineSpacing(4).fixedSize(horizontal:false,vertical:true)
+                                    }
+                                    Spacer(minLength:0)
+                                }.padding(14).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xf0e9e7),lineWidth:1))
+                            }
+                        }
+                    }.padding(.horizontal,20).padding(.bottom,18)
+                }
+                VStack(spacing:0){
+                    Text("↳ \(l("回复","Reply")) \(answer.author)  ·  \(l("匿名","anonymous"))").font(.system(size:11)).foregroundColor(Color(hex:0x9b8f8b)).frame(maxWidth:.infinity,alignment:.leading).padding(.bottom,8)
+                    HStack(spacing:9){
+                        TextField(l("写下回复…","Write a reply…"),text:$replyText).font(.system(size:16)).padding(.horizontal,13).padding(.vertical,13).frame(minHeight:46).background(Color(hex:0xf7f4f1),in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xeee8e4),lineWidth:1))
+                        Button {appendReply(answer)} label:{HStack(spacing:4){Text(l("发送","Send"));Text("↑")}.font(.system(size:13,weight:.bold)).foregroundColor(.white).padding(.horizontal,13).frame(minWidth:74,minHeight:46).background(accent,in:RoundedRectangle(cornerRadius:15))}.buttonStyle(PressScale())
+                    }
+                }.padding(.horizontal,16).padding(.top,10).padding(.bottom,max(bottom+12,keyboardHeight+8)).background(Color(hex:0xfffdfb)).overlay(Rectangle().fill(Color(hex:0xeee7e4)).frame(height:1),alignment:.top)
+            }.frame(width:width-28,height:dialogH).background(Color(hex:0xfffbf9)).clipShape(RoundedRectangle(cornerRadius:23)).shadow(color:Color(hex:0x45313a).opacity(0.19),radius:26,y:18).padding(.bottom,bottom+14)
+        }.frame(width:width,height:height)
     }
 }
 private struct TopRoundedShape:Shape {

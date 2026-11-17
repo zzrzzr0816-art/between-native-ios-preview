@@ -1,4 +1,6 @@
 import SwiftUI
+import Combine
+import UIKit
 
 struct ContentView: View {
     @StateObject var model = NativeFeedModel()
@@ -24,7 +26,11 @@ struct ContentView: View {
     @State var updates: [String:[String]] = [:]
     @State var detailStory: NativeStory? = nil
     @State var reportReason = "harassment"
+    @State var keyboardHeight: CGFloat = 0
     @State var toastText: String? = nil
+    @State var writePeek: NativeCamp = .devil
+    @State var hintVisible = false
+    @State var hintToken = 0
     @AppStorage("native.motion") var motionOn = true
     @FocusState var composerFocused: Bool
     var zh: Bool { language == "zh" }
@@ -46,16 +52,21 @@ struct ContentView: View {
                     Color.black.opacity(0.12*Double(campProgress)).allowsHitTesting(false)
                     comments(chosen,width:w,height:h,top:top,bottom:bottom).offset(x:-chosen.sign*w*(1-campProgress)).allowsHitTesting((campProgress>0.99 || axis==2) && !settling)
                 }
-                companions(width:w,top:top,height:h).zIndex(utility == nil ? 1:(utility == "write" ? 9:11))
+                companions(width:w,top:top,height:h).zIndex(companionsLayer)
                 if let page = utility { utilityPage(page,width:w,height:h,top:top,bottom:bottom).zIndex(10).transition(.opacity.combined(with:.offset(y:12))) }
-                if let answer = selectedReply { replyOverlay(answer,width:w,height:h,top:top).zIndex(20).transition(.opacity) }
+                if let answer = selectedReply { replyOverlay(answer,width:w,height:h,top:top,bottom:bottom).zIndex(20).transition(.opacity) }
                 if let story = detailStory { detailPage(story,width:w,height:h,top:top,bottom:bottom).zIndex(22).transition(.opacity) }
                 if let text = toastText { toastView(text).zIndex(30) }
             }.frame(width:w,height:h).clipped().offset(y:-top)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:devilCount)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:angelCount)
         }.foregroundColor(H5Design.ink).tint(H5Design.ink).buttonStyle(.plain)
-            .task { if ProcessInfo.processInfo.arguments.contains("-ui-zh"){language="zh"};await model.load(language);restoreLocal();applyPreviewRoute() }
+            .task { if ProcessInfo.processInfo.arguments.contains("-ui-zh"){language="zh"};await model.load(language);restoreLocal();applyPreviewRoute();resetIdleHints() }
+            .onReceive(NotificationCenter.default.publisher(for:UIResponder.keyboardWillChangeFrameNotification)){ note in
+                guard let frame=note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else{return}
+                keyboardHeight=max(0,UIScreen.main.bounds.height-frame.origin.y)
+            }
+            .onReceive(NotificationCenter.default.publisher(for:UIResponder.keyboardWillHideNotification)){ _ in keyboardHeight=0 }
     }
     func applyPreviewRoute(){
         let args=ProcessInfo.processInfo.arguments
@@ -82,11 +93,20 @@ struct ContentView: View {
         let local=state.localStories.filter{!hidden.contains($0.id)}
         if !local.isEmpty { model.stories.insert(contentsOf:local,at:0) }
         model.stories.removeAll{hidden.contains($0.id)}
+        for (sid,answers) in state.myAnswers { guard let si=model.stories.firstIndex(where:{$0.id==sid}) else{continue}
+            for a in answers where !model.stories[si].answers.contains(where:{$0.id==a.id}) { model.stories[si].answers.append(a) } }
+        for (aid,reps) in state.replies { for si in model.stories.indices {
+            guard let ai=model.stories[si].answers.firstIndex(where:{$0.id==aid}) else{continue}
+            for r in reps where !model.stories[si].answers[ai].replies.contains(where:{$0.id==r.id}) { model.stories[si].answers[ai].replies.append(r) } } }
     }
     func persistLocal(){
         var state=NativeLocalState()
         state.localStories=model.stories.filter{$0.id.hasPrefix("local-")}
         state.snapshots=snapshots;state.reports=reports;state.hidden=hidden;state.liked=liked;state.best=best;state.updates=updates
+        state.myAnswers=Dictionary(uniqueKeysWithValues:model.stories.map{($0.id,$0.answers.filter{$0.author==l("你 · 预览","You · preview")})}.filter{!$0.value.isEmpty})
+        var reps:[String:[NativeReply]]=[:]
+        for story in model.stories { for a in story.answers where a.author==l("你 · 预览","You · preview") || !a.replies.isEmpty { reps[a.id]=a.replies } }
+        state.replies=reps.filter{!$0.value.isEmpty}
         if let data=try? JSONEncoder().encode(state){UserDefaults.standard.set(data,forKey:"native.local.v1")}
     }
     func homeHeader(width:CGFloat,top:CGFloat)->some View {
@@ -117,6 +137,7 @@ struct ContentView: View {
     }
     func feedChanged(_ value:DragGesture.Value,width:CGFloat,area:CGFloat){
         guard !settling,utility==nil,selectedReply==nil else{return}
+        resetIdleHints()
         if axis==nil {axis=abs(value.translation.width)>abs(value.translation.height) ? 0:1}
         if axis==0 {camp=value.translation.width<0 ? .devil:.angel;campProgress=min(1,abs(value.translation.width)/width)}
         else if campProgress==0,let story=model.current {
@@ -170,18 +191,53 @@ struct ContentView: View {
         let reaction = camp == .devil ? "devil" : camp == .angel ? "angel" : ""
         let gesture = camp == nil ? 0 : campProgress
         let strong = abs(devilCount-angelCount) > 1
-        let place = CompanionPlacement(width:width,top:top,height:height,profile:utility == "profile",sheet:camp != nil,reply:selectedReply != nil,write:utility == "write")
+        let place = CompanionPlacement(width:width,top:top,height:height,mode:companionMode)
         return ZStack(alignment:.topLeading){
-            CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale).position(x:place.devilX,y:place.y)
-            CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale).position(x:place.angelX,y:place.y)
-        }.allowsHitTesting(!settling && campProgress == 0 && utility == nil)
+            CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale,buddyScale:place.buddyScale,peek:place.peek).position(x:place.devilX,y:place.y).opacity(place.devilVisible ? 1:0)
+            CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale,buddyScale:place.buddyScale,peek:place.peek).position(x:place.angelX,y:place.y).opacity(place.angelVisible ? 1:0)
+        }.allowsHitTesting(!settling && campProgress == 0 && (utility == nil || utility == "write" || ["profile-stories","profile-answers","saved","activity"].contains(utility ?? "")))
+            .opacity(keyboardHeight > 0 ? 0:1)
+            .animation(reduceMotion || !motionOn ? nil:.easeInOut(duration:0.25),value:keyboardHeight)
             .animation(reduceMotion ? nil:.timingCurve(0.3,0.05,0.25,1,duration:0.68),value:place)
     }
+    var companionMode:CompanionMode {
+        if let c = camp { return selectedReply == nil ? .sheet(c) : .reply(c) }
+        if utility == "write" { return .write(writePeek) }
+        if utility == "profile" { return .profile }
+        if let u = utility, ["profile-stories","profile-answers","saved","activity"].contains(u) { return .library }
+        return .home
+    }
+    var companionsLayer:Double {
+        if let u = utility { return u == "write" ? 9:11 }
+        if selectedReply != nil { return 21 }
+        if camp != nil { return 12 }
+        return 1
+    }
     func bottomNav(width:CGFloat,height:CGFloat,bottom:CGFloat)->some View {
-        HStack(spacing:0){navItem(l("烦恼","Stories"),icon:"house",active:true){};navItem(l("发布","Post"),icon:"plus",active:false){withAnimation(transitionAnimation){utility="write"}};navItem(l("我的","Me"),icon:"person",active:false){withAnimation(transitionAnimation){utility="profile"}}}.padding(.horizontal,24).padding(.bottom,bottom).frame(width:width,height:70+bottom).background(Color(hex:0xfffcf8).opacity(0.81)).overlay(Rectangle().fill(Color.white.opacity(0.7)).frame(height:1),alignment:.top).position(x:width/2,y:height-(70+bottom)/2)
+        HStack(spacing:0){navItem(l("烦恼","Stories"),icon:"house",active:true){};navItem(l("发布","Post"),icon:"plus",active:false){openWrite()};navItem(l("我的","Me"),icon:"person",active:false){withAnimation(transitionAnimation){utility="profile"}}}.padding(.horizontal,24).padding(.bottom,bottom).frame(width:width,height:70+bottom).background(ZStack{BlurView();Color(hex:0xfff8fc).opacity(0.53)}).overlay(Rectangle().fill(Color.white.opacity(0.5)).frame(height:1),alignment:.top).position(x:width/2,y:height-(70+bottom)/2)
+    }
+    func openWrite(){
+        writePeek = Bool.random() ? .devil:.angel
+        resetIdleHints()
+        withAnimation(transitionAnimation){utility="write"}
+    }
+    func resetIdleHints(_ delay:Double = 4.2){
+        hintToken += 1
+        let token = hintToken
+        hintVisible = false
+        DispatchQueue.main.asyncAfter(deadline:.now()+delay){
+            guard token == hintToken else{return}
+            if camp != nil || utility != nil || selectedReply != nil || detailStory != nil {resetIdleHints(12);return}
+            withAnimation(.easeInOut(duration:0.55)){hintVisible = true}
+            DispatchQueue.main.asyncAfter(deadline:.now()+2.8){
+                guard token == hintToken else{return}
+                withAnimation(.easeInOut(duration:0.55)){hintVisible = false}
+                resetIdleHints(12)
+            }
+        }
     }
     func idleHints(width:CGFloat,height:CGFloat,bottom:CGFloat)->some View {
-        let show = camp == nil && utility == nil && selectedReply == nil && !settling && verticalProgress < 0.001
+        let show = hintVisible && camp == nil && utility == nil && selectedReply == nil && !settling && verticalProgress < 0.001
         return HStack(spacing:8){
             Text("← " + l("恶魔","Devil"))
             Spacer(minLength:8)
@@ -204,6 +260,13 @@ struct ContentView: View {
             }.frame(maxWidth:.infinity,minHeight:56)
         }
     }
+}
+private struct BlurView:UIViewRepresentable {
+    func makeUIView(context:Context)->UIVisualEffectView { UIVisualEffectView(effect:UIBlurEffect(style:.systemUltraThinMaterial)) }
+    func updateUIView(_ view:UIVisualEffectView,context:Context) {}
+}
+struct PressScale:ButtonStyle {
+    func makeBody(configuration:Configuration)->some View { configuration.label.scaleEffect(configuration.isPressed ? 0.95:1).animation(.easeOut(duration:0.12),value:configuration.isPressed) }
 }
 private struct NavGlyph:Shape {
     enum Kind { case house, plus, person }
@@ -228,17 +291,54 @@ private struct NavGlyph:Shape {
         return path
     }
 }
+enum CompanionMode:Equatable {
+    case home
+    case sheet(NativeCamp)
+    case reply(NativeCamp)
+    case profile
+    case library
+    case write(NativeCamp)
+}
 private struct CompanionPlacement:Equatable {
-    var devilX:CGFloat=63
-    var angelX:CGFloat=0
-    var y:CGFloat=0
-    var scale:CGFloat=1
-    init(width:CGFloat,top:CGFloat,height:CGFloat,profile:Bool,sheet:Bool,reply:Bool,write:Bool) {
-        if reply { devilX=11;angelX=width-11;y=height*0.46+29;scale=1 }
-        else if sheet { devilX=width/2-20.1;angelX=width/2+20.1;y=top+22.4;scale=0.67 }
-        else if profile { devilX=width-51.5;angelX=width-31.4;y=top+33.4;scale=0.53 }
-        else if write { devilX=width/2;angelX=width/2;y=height*0.12+22;scale=0.9 }
-        else { devilX=63;angelX=width-63;y=top+137;scale=1 }
+    var devilX:CGFloat = 63
+    var angelX:CGFloat = 0
+    var y:CGFloat = 0
+    var scale:CGFloat = 1
+    var buddyScale:CGFloat = 1.15
+    var devilVisible = true
+    var angelVisible = true
+    var peek = false
+    init(width:CGFloat,top:CGFloat,height:CGFloat,mode:CompanionMode) {
+        switch mode {
+        case .home:
+            angelX = width-63
+            y = top+137
+        case .sheet(let side), .reply(let side):
+            angelX = width-63
+            y = top+137
+            buddyScale = 1.47
+            devilVisible = side == .devil
+            angelVisible = side == .angel
+        case .profile:
+            scale = 0.82
+            y = top+99.8
+            devilX = width/2-38.5
+            angelX = width/2+38.5
+        case .library:
+            scale = 0.53
+            y = top+33.4
+            devilX = width-51.5
+            angelX = width-31.4
+        case .write(let side):
+            scale = 0.9
+            buddyScale = 0.94
+            peek = true
+            y = height*0.12+22
+            devilX = width/2
+            angelX = width/2
+            devilVisible = side == .devil
+            angelVisible = side == .angel
+        }
     }
 }
 private struct HeaderButtonStyle:ButtonStyle {

@@ -24,6 +24,8 @@ struct NativeLocalState: Codable {
     var liked: [String: Bool] = [:]
     var best: [String: String] = [:]
     var updates: [String: [String]] = [:]
+    var replies: [String: [NativeReply]] = [:]
+    var myAnswers: [String: [NativeAnswer]] = [:]
 }
 struct NativeFeed: Decodable { let stories: [NativeStory] }
 enum NativeCamp: String {
