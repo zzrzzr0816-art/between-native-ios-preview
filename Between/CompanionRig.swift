@@ -379,7 +379,7 @@ html[data-motion] .app[data-leader] .buddy[data-grabbed=true] .eye{animation:non
 .app[data-leader] .buddy-devil[data-tap=winning] .smile{width:12px!important;height:7px!important;border:0!important;border-bottom:1.8px solid #795356!important;background:transparent!important;border-radius:0 0 10px 10px!important}
 html,body{margin:0;padding:0;background:transparent;overflow:visible;width:250px;height:250px;-webkit-text-size-adjust:100%;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#302b32}
 .app{position:relative;width:250px;height:250px;margin:0;overflow:visible;background:none;box-shadow:none;--gesture:0;--bob:0}
-.companions{position:absolute;left:96px;top:96px;width:58px;height:58px;display:flex;justify-content:space-between;pointer-events:none;scale:var(--stage-scale,1)}
+.companions{position:absolute;left:96px;top:96px;width:58px;height:58px;display:flex;justify-content:space-between;pointer-events:none;scale:var(--stage-scale,1);transition:scale .68s cubic-bezier(.3,.05,.25,1)}
 
 """#
 

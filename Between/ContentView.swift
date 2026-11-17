@@ -37,9 +37,8 @@ struct ContentView: View {
                     Color.black.opacity(0.12*Double(campProgress)).allowsHitTesting(false)
                     comments(chosen,width:w,height:h,top:top,bottom:bottom).offset(x:-chosen.sign*w*(1-campProgress)).allowsHitTesting((campProgress>0.99 || axis==2) && !settling)
                 }
-                companions(width:w,top:top)
+                companions(width:w,top:top,height:h).zIndex(utility == nil ? 1:11)
                 if let page = utility { utilityPage(page,width:w,height:h,top:top,bottom:bottom).zIndex(10).transition(.opacity.combined(with:.offset(y:12))) }
-                if utility == "profile" { companions(width:w,top:top,compact:true).zIndex(11) }
                 if let answer = selectedReply { replyOverlay(answer,width:w,height:h,top:top).zIndex(20).transition(.opacity) }
             }.frame(width:w,height:h).clipped().offset(y:-top)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:devilCount)
@@ -113,15 +112,16 @@ struct ContentView: View {
         }.padding(.horizontal,26).frame(width:width-52,height:height).clipped().background(H5Design.card,in:RoundedRectangle(cornerRadius:30))
             .overlay(RoundedRectangle(cornerRadius:30).stroke(Color.white.opacity(0.79),lineWidth:1)).overlay(RoundedRectangle(cornerRadius:24).stroke(Color.white.opacity(0.67),lineWidth:1).padding(7)).shadow(color:Color(hex:0xa46872).opacity(0.17),radius:24,x:0,y:20).shadow(color:Color(hex:0x896d7b).opacity(0.08),radius:6,x:0,y:4)
     }
-    func companions(width:CGFloat,top:CGFloat,compact:Bool=false)->some View {
-        let reaction = compact ? "" : camp == .devil ? "devil" : camp == .angel ? "angel" : ""
-        let gesture = (camp == nil || compact) ? 0 : campProgress
+    func companions(width:CGFloat,top:CGFloat,height:CGFloat)->some View {
+        let reaction = camp == .devil ? "devil" : camp == .angel ? "angel" : ""
+        let gesture = camp == nil ? 0 : campProgress
         let strong = abs(devilCount-angelCount) > 1
-        let y = compact ? top+33 : top+137
+        let place = CompanionPlacement(width:width,top:top,height:height,profile:utility == "profile",sheet:camp != nil,reply:selectedReply != nil)
         return ZStack(alignment:.topLeading){
-            CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:compact ? 0.53:1).position(x:compact ? width-60:63,y:y)
-            CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:compact ? 0.53:1).position(x:compact ? width-40:width-63,y:y)
-        }.allowsHitTesting(!settling)
+            CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale).position(x:place.devilX,y:place.y)
+            CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale).position(x:place.angelX,y:place.y)
+        }.allowsHitTesting(!settling && campProgress == 0 && utility == nil)
+            .animation(reduceMotion ? nil:.timingCurve(0.3,0.05,0.25,1,duration:0.68),value:place)
     }
     func bottomNav(width:CGFloat,height:CGFloat,bottom:CGFloat)->some View {
         HStack(spacing:0){navItem(l("烦恼","Stories"),icon:"house",active:true){};navItem(l("发布","Post"),icon:"plus",active:false){withAnimation(transitionAnimation){utility="write"}};navItem(l("我的","Me"),icon:"person",active:false){withAnimation(transitionAnimation){utility="profile"}}}.padding(.horizontal,24).padding(.bottom,bottom).frame(width:width,height:70+bottom).background(Color(hex:0xfffcf8).opacity(0.81)).overlay(Rectangle().fill(Color.white.opacity(0.7)).frame(height:1),alignment:.top).position(x:width/2,y:height-(70+bottom)/2)
@@ -172,6 +172,18 @@ private struct NavGlyph:Shape {
             path.addCurve(to:p(18.4,19),control1:p(15.25,14.3),control2:p(17.7,16.05))
         }
         return path
+    }
+}
+private struct CompanionPlacement:Equatable {
+    var devilX:CGFloat=63
+    var angelX:CGFloat=0
+    var y:CGFloat=0
+    var scale:CGFloat=1
+    init(width:CGFloat,top:CGFloat,height:CGFloat,profile:Bool,sheet:Bool,reply:Bool) {
+        if reply { devilX=11;angelX=width-11;y=height*0.46+29;scale=1 }
+        else if sheet { devilX=width/2-20.1;angelX=width/2+20.1;y=top+22.4;scale=0.67 }
+        else if profile { devilX=width-51.5;angelX=width-31.4;y=top+33.4;scale=0.53 }
+        else { devilX=63;angelX=width-63;y=top+137;scale=1 }
     }
 }
 private struct HeaderButtonStyle:ButtonStyle {
