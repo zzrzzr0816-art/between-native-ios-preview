@@ -127,24 +127,45 @@ extension ContentView {
     func publishStory(){
         let text=replyText.trimmingCharacters(in:.whitespacesAndNewlines)
         guard !text.isEmpty else{notice=l("请先写点内容","Write something first");return}
-        notice=l("原生预览暂不提交内容。","This native preview does not submit stories.")
+        model.stories.insert(NativeStory(id:"local-\(UUID().uuidString)",text:text,created:Date().timeIntervalSince1970*1000,answers:[]),at:0)
+        model.index=0;replyText="";withAnimation(transitionAnimation){utility=nil}
+        notice=l("已发布","Story shared")
     }
     func morePage(width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
         VStack(alignment:.leading,spacing:10){
             sheetHead(l("更多","More"),top:top,padBottom:14)
             VStack(spacing:10){
-                moreRow("♡ "+l("保存完整讨论","Save discussion"))
-                moreRow("⚑ "+l("举报内容","Report content"))
-                moreRow("⊘ "+l("屏蔽这条","Hide story"))
+                moreRow("♡ "+l("保存完整讨论","Save discussion")){saveSnapshot()}
+                moreRow("⚑ "+l("举报内容","Report content")){reportStory()}
+                moreRow("⊘ "+l("屏蔽这条","Hide story")){hideStory()}
             }.padding(.horizontal,20)
             Spacer(minLength:0)
         }.padding(.bottom,bottom+20).frame(width:width,height:height*0.62,alignment:.top).background(Color(hex:0xfffbf9)).clipShape(TopRoundedShape(radius:26)).position(x:width/2,y:height-height*0.62/2)
     }
-    func moreRow(_ title:String)->some View {
-        Button {} label:{
+    func moreRow(_ title:String,action:@escaping ()->Void)->some View {
+        Button(action:action) label:{
             HStack{Text(title);Spacer()}.font(.system(size:15)).foregroundColor(Color(hex:0x59484b)).padding(15).frame(maxWidth:.infinity)
                 .background(.white,in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xeee7e4),lineWidth:1))
         }
+    }
+    func saveSnapshot(){
+        guard let story=model.current else{return}
+        if !snapshots.contains(where:{$0.id==story.id}) { snapshots.append(story) }
+        withAnimation(transitionAnimation){utility=nil}
+        notice=l("快照已保存","Snapshot saved")
+    }
+    func reportStory(){
+        guard let story=model.current else{return}
+        if !reports.contains(story.id) { reports.append(story.id) }
+        withAnimation(transitionAnimation){utility=nil}
+        notice=l("已记录举报","Report recorded")
+    }
+    func hideStory(){
+        guard model.stories.indices.contains(model.index) else{return}
+        var t=Transaction();t.disablesAnimations=true
+        withTransaction(t){ model.stories.remove(at:model.index); if model.index >= model.stories.count { model.index = max(0,model.stories.count-1) } }
+        withAnimation(transitionAnimation){utility=nil}
+        notice=l("已屏蔽这条烦恼","Story hidden")
     }
 
     // MARK: - Profile
@@ -166,10 +187,10 @@ extension ContentView {
                     }.padding(24).frame(maxWidth:.infinity,alignment:.leading)
                         .background(LinearGradient(stops:[.init(color:Color(hex:0xf9e5df),location:0),.init(color:Color(hex:0xf5eeea),location:0.55),.init(color:Color(hex:0xe6f1f3),location:1)],startPoint:.topLeading,endPoint:.bottomTrailing),in:RoundedRectangle(cornerRadius:21)).padding(.top,14)
                     LazyVGrid(columns:columns,spacing:10){
-                        Button {openUtility("profile-stories")} label:{profileTile("✎",iconBG:0xfae7e2,iconColor:0xbe7770,label:l("我的烦恼","My stories"),count:0)}
+                        Button {openUtility("profile-stories")} label:{profileTile("✎",iconBG:0xfae7e2,iconColor:0xbe7770,label:l("我的烦恼","My stories"),count:model.stories.filter{$0.id.hasPrefix("local-")}.count)}
                         Button {openUtility("profile-answers")} label:{profileTile("✧",iconBG:0xe7f1f6,iconColor:0x789fb2,label:l("我的建议","My responses"),count:answers)}
-                        Button {openUtility("saved")} label:{profileTile("♡",iconBG:0xfaeee6,iconColor:0xc58c78,label:l("收藏","Saved"),count:0)}
-                        Button {openUtility("activity")} label:{profileTile("◌",iconBG:0xefecf3,iconColor:0xa096b0,label:l("举报审核反馈","Report updates"),count:nil)}
+                        Button {openUtility("saved")} label:{profileTile("♡",iconBG:0xfaeee6,iconColor:0xc58c78,label:l("收藏","Saved"),count:snapshots.count)}
+                        Button {openUtility("activity")} label:{profileTile("◌",iconBG:0xefecf3,iconColor:0xa096b0,label:l("举报审核反馈","Report updates"),count:reports.isEmpty ? nil:reports.count)}
                     }.padding(.top,15)
                     HStack(spacing:10){
                         Text("◈").font(.system(size:18)).foregroundColor(Color(hex:0xba9087))
@@ -207,6 +228,9 @@ extension ContentView {
         }
         var items:[(String,String)] = []
         if page=="profile-answers" { for story in model.stories { for answer in story.answers where answer.author==me { items.append((answer.text,story.text)) } } }
+        if page=="profile-stories" { for story in model.stories where story.id.hasPrefix("local-") { items.append((story.text,l("原生预览 · 仅本机","Native preview · this device only"))) } }
+        if page=="saved" { for story in snapshots { items.append((story.text,l("快照 · 只读","Snapshot · read only"))) } }
+        if page=="activity" { for id in reports { items.append((model.stories.first{$0.id==id}?.text ?? l("已移除的烦恼","A removed story"),l("举报已记录 · 原型不进入真实审核","Report recorded · prototype only"))) } }
         return VStack(alignment:.leading,spacing:0){
             HStack(spacing:10){
                 Button {openUtility("profile")} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x75666d)).frame(width:44,height:44)}.accessibilityLabel(l("返回","Back"))
@@ -222,7 +246,7 @@ extension ContentView {
                     }
                     ForEach(Array(items.enumerated()),id:\.offset){ _,item in
                         VStack(alignment:.leading,spacing:8){
-                            Text(l("我的建议","My responses")).font(.system(size:11)).foregroundColor(Color(hex:0xb0a29d))
+                            Text(title).font(.system(size:11)).foregroundColor(Color(hex:0xb0a29d))
                             Text(item.0).font(.system(size:14)).foregroundColor(Color(hex:0x59484b)).fixedSize(horizontal:false,vertical:true)
                             Text(item.1).font(.system(size:12)).foregroundColor(Color(hex:0x9b8d8b)).lineLimit(2)
                         }.padding(15).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xf0e9e7),lineWidth:1))

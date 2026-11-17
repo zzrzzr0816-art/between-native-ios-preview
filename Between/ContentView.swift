@@ -16,6 +16,8 @@ struct ContentView: View {
     @State var utility: String? = nil
     @State var selectedReply: NativeAnswer? = nil
     @State var replyText = ""
+    @State var snapshots: [NativeStory] = []
+    @State var reports: [String] = []
     @State var notice: String? = nil
     @FocusState var composerFocused: Bool
     var zh: Bool { language == "zh" }
