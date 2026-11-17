@@ -20,7 +20,7 @@ struct NativeFeed: Decodable { let stories: [NativeStory] }
 enum NativeCamp: String {
     case devil, angel
     var accent: Color { Color(hex: self == .devil ? 0xc6786d : 0x628fa9) }
-    var background: Color { Color(hex: self == .devil ? 0xfff2ef : 0xf0f8fc) }
+    var background: Color { Color(hex: self == .devil ? 0xfff2ef : 0xeef8ff) }
     var sign: CGFloat { self == .devil ? -1 : 1 }
 }
 @MainActor final class NativeFeedModel: ObservableObject {
