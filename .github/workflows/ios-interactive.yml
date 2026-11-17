@@ -6,7 +6,7 @@ permissions:
 jobs:
   interactive:
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
       - name: Build native app
@@ -49,6 +49,6 @@ jobs:
           name: interactive-url
           path: ${{ runner.temp }}/interactive-url.txt
           retention-days: 1
-      - name: Keep simulator available for twenty minutes
+      - name: Keep simulator available for ninety minutes
         run: |
-          for i in $(seq 1 120); do sleep 10; done
+          for i in $(seq 1 540); do sleep 10; done
