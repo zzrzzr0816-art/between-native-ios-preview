@@ -12,6 +12,7 @@ struct CompanionRig: View {
     var chinese: Bool
     var reaction: String
     var gesture: CGFloat
+    var stageScale: CGFloat = 1
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var bridge = BuddyBridge()
     @State private var dragging = false
@@ -65,7 +66,7 @@ struct CompanionRig: View {
     }
 
     private func push() {
-        bridge.run("setState('\(leader)','\(gap)','\(reaction)',\(Double(gesture)))")
+        bridge.run("setState('\(leader)','\(gap)','\(reaction)',\(Double(gesture)));setScale(\(Double(stageScale)))")
     }
 }
 
@@ -142,6 +143,7 @@ private enum BuddyHTML {
     }
 
     private static let css = #"""
+*{box-sizing:border-box}
 .buddy{position:relative;width:58px;height:58px;transform:translateY(calc(var(--bob) * -7px));transition:transform .3s cubic-bezier(.22,1,.36,1);animation:buddy-float 3.8s ease-in-out infinite}
 .buddy-angel{animation-delay:-1.8s}
 .buddy-face{position:absolute;inset:12px 7px 4px;background:#e99386;border-radius:47% 48% 45% 46%;box-shadow:inset 0 -4px 0 #d1766b40,0 5px 12px #a55f6326;display:flex;align-items:center;justify-content:center;gap:10px}
@@ -363,7 +365,7 @@ html[data-motion] .app[data-leader] .buddy[data-grabbed=true] .eye{animation:non
 .app[data-leader] .buddy-devil[data-tap=winning] .smile{width:12px!important;height:7px!important;border:0!important;border-bottom:1.8px solid #795356!important;background:transparent!important;border-radius:0 0 10px 10px!important}
 html,body{margin:0;padding:0;background:transparent;overflow:visible;width:250px;height:250px;-webkit-text-size-adjust:100%;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#302b32}
 .app{position:relative;width:250px;height:250px;margin:0;overflow:visible;background:none;box-shadow:none;--gesture:0;--bob:0}
-.companions{position:absolute;left:96px;top:96px;width:58px;height:58px;display:flex;justify-content:space-between;pointer-events:none}
+.companions{position:absolute;left:96px;top:96px;width:58px;height:58px;display:flex;justify-content:space-between;pointer-events:none;scale:var(--stage-scale,1)}
 
 """#
 
@@ -375,6 +377,9 @@ const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 window.__zh = true;
 
 window.setLang = function (zh) { window.__zh = !!zh; };
+window.setScale = function (s) {
+  document.querySelector('.companions').style.setProperty('--stage-scale', s);
+};
 window.setMotion = function (on) { document.documentElement.dataset.motion = on ? 'on' : 'off'; };
 window.setState = function (leader, gap, reaction, gesture) {
   app.dataset.leader = leader;

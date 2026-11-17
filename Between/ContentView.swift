@@ -38,6 +38,7 @@ struct ContentView: View {
                 }
                 companions(width:w,top:top)
                 if let page = utility { utilityPage(page,width:w,height:h,top:top,bottom:bottom).zIndex(10).transition(.opacity.combined(with:.offset(y:12))) }
+                if utility == "profile" { companions(width:w,top:top,compact:true).zIndex(11) }
                 if let answer = selectedReply { replyOverlay(answer,width:w,height:h,top:top).zIndex(20).transition(.opacity) }
             }.frame(width:w,height:h).clipped().offset(y:-top)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:devilCount)
@@ -108,13 +109,14 @@ struct ContentView: View {
         }.padding(.horizontal,26).frame(width:width-52,height:height).background(H5Design.card,in:RoundedRectangle(cornerRadius:30))
             .overlay(RoundedRectangle(cornerRadius:30).stroke(Color.white.opacity(0.79),lineWidth:1)).overlay(RoundedRectangle(cornerRadius:24).stroke(Color.white.opacity(0.67),lineWidth:1).padding(7)).shadow(color:Color(hex:0xa46872).opacity(0.17),radius:24,x:0,y:20)
     }
-    func companions(width:CGFloat,top:CGFloat)->some View {
-        let reaction = camp == .devil ? "devil" : camp == .angel ? "angel" : ""
-        let gesture = camp == nil ? 0 : campProgress
+    func companions(width:CGFloat,top:CGFloat,compact:Bool=false)->some View {
+        let reaction = compact ? "" : camp == .devil ? "devil" : camp == .angel ? "angel" : ""
+        let gesture = (camp == nil || compact) ? 0 : campProgress
         let strong = abs(devilCount-angelCount) > 1
+        let y = compact ? top+33 : top+137
         return ZStack(alignment:.topLeading){
-            CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture).position(x:63,y:top+137)
-            CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture).position(x:width-63,y:top+137)
+            CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,stageScale:compact ? 0.53:1).position(x:compact ? width-60:63,y:y)
+            CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,stageScale:compact ? 0.53:1).position(x:compact ? width-40:width-63,y:y)
         }.allowsHitTesting(!settling)
     }
     func bottomNav(width:CGFloat,height:CGFloat,bottom:CGFloat)->some View {
