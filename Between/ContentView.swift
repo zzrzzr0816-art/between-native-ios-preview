@@ -119,7 +119,7 @@ struct ContentView: View {
         var state=NativeLocalState()
         state.localStories=model.stories.filter{$0.id.hasPrefix("local-")}
         state.snapshots=snapshots;state.reports=reports;state.hidden=hidden;state.liked=liked;state.best=best;state.updates=updates
-        state.myAnswers=Dictionary(uniqueKeysWithValues:model.stories.map{($0.id,$0.answers.filter{$0.author==l("你 · 预览","You · preview")})}.filter{!$0.value.isEmpty})
+        state.myAnswers=Dictionary(uniqueKeysWithValues:model.stories.map{($0.id,$0.answers.filter{$0.author==l("你 · 预览","You · preview")})}.filter{!$0.1.isEmpty})
         state.reviewed=reviewed
         var reps:[String:[NativeReply]]=[:]
         for story in model.stories { for a in story.answers where a.author==l("你 · 预览","You · preview") || !a.replies.isEmpty { reps[a.id]=a.replies } }
