@@ -18,7 +18,7 @@ jobs:
           xcrun simctl bootstatus "$DEVICE" -b
           xcrun simctl status_bar "$DEVICE" override --time "9:41" --dataNetwork wifi --wifiBars 3 --batteryState charged --batteryLevel 100
           xcrun simctl install "$DEVICE" "$RUNNER_TEMP/between-build/Between.app"
-          xcrun simctl launch "$DEVICE" com.example.between.preview
+          xcrun simctl launch "$DEVICE" com.example.between.preview -preview-fixture
           sleep 12
           xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/native-preview.png"
       - uses: actions/upload-artifact@v4

@@ -43,19 +43,19 @@ struct ContentView: View {
     @GestureState private var translation: CGSize = .zero
     private var chinese: Bool { language == "zh" }
     private var gradient: LinearGradient {
-        LinearGradient(colors: [Color(red: 0.96, green: 0.68, blue: 0.66), Color(red: 0.98, green: 0.88, blue: 0.81), Color(red: 0.76, green: 0.88, blue: 0.93)], startPoint: .leading, endPoint: .trailing)
+        LinearGradient(colors: [Color(red: 0.961, green: 0.667, blue: 0.655), Color(red: 0.973, green: 0.82, blue: 0.769), Color(red: 0.965, green: 0.898, blue: 0.863), Color(red: 0.863, green: 0.922, blue: 0.949), Color(red: 0.718, green: 0.851, blue: 0.922)], startPoint: .leading, endPoint: .trailing)
     }
     var body: some View {
         ZStack {
             gradient.ignoresSafeArea()
             VStack(spacing: 12) {
                 HStack {
-                    Text("between.").font(.system(size: 31, weight: .heavy, design: .rounded))
+                    Text("between.").font(.system(size: 23, weight: .heavy, design: .rounded)).foregroundColor(Color(red: 0.26, green: 0.21, blue: 0.25))
                     Spacer()
                     Button(chinese ? "EN" : "中") { language = chinese ? "en" : "zh"; side = nil; Task { await model.load(language) } }
                         .font(.system(size: 18, weight: .semibold)).frame(width: 44, height: 44).background(.white.opacity(0.55), in: Circle())
                 }.padding(.horizontal, 24)
-                Text(chinese ? "原生首页预览 · 功能开发中" : "NATIVE PREVIEW · WORK IN PROGRESS")
+                Text(chinese ? "原生预览 · 功能开发中" : "NATIVE PREVIEW · WORK IN PROGRESS")
                     .font(.caption).foregroundColor(.black.opacity(0.48))
                 HStack {
                     Mascot(angel: false).opacity(side == "angel" ? 0.15 : 1).scaleEffect(side == "devil" ? 1.15 : 1)
@@ -66,7 +66,7 @@ struct ContentView: View {
                     if model.loading { ProgressView() }
                     else if model.error { VStack(spacing: 14) { Text(chinese ? "暂时无法加载" : "Could not load stories"); Button(chinese ? "重试" : "Retry") { Task { await model.load(language) } } } }
                     else if let story = model.current { storyCard(story) }
-                    else { Text(chinese ? "暂时没有烦恼" : "No stories yet") }
+                    else { RoundedRectangle(cornerRadius: 30).fill(.white.opacity(0.82)).overlay(Text(chinese ? "暂时没有烦恼" : "No stories yet").foregroundColor(.secondary)) }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 HStack {
                     Label(chinese ? "烦恼" : "Stories", systemImage: "house")
@@ -78,11 +78,19 @@ struct ContentView: View {
                  .background(.white.opacity(0.75), in: RoundedRectangle(cornerRadius: 22))
             }.padding(.top, 8).padding(.horizontal, 12)
         }
-        .task { await model.load(language) }
+        .task {
+            if ProcessInfo.processInfo.arguments.contains("-preview-fixture") {
+                model.stories = [Story(id: "preview", text: "My best friend is moving away. Do I tell them how much it hurts?", created: 0, answers: [])]
+            } else { await model.load(language) }
+        }
     }
     @ViewBuilder private func storyCard(_ story: Story) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 30).fill(.white.opacity(0.85))
+            RoundedRectangle(cornerRadius: 30)
+                .fill(LinearGradient(colors: [.white.opacity(0.93), Color(red: 1, green: 0.973, blue: 0.957).opacity(0.78)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(RoundedRectangle(cornerRadius: 30).stroke(.white.opacity(0.8), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.65), lineWidth: 1).padding(7))
+                .shadow(color: Color(red: 0.65, green: 0.41, blue: 0.45).opacity(0.17), radius: 24, y: 14)
             if let selected = side {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -105,7 +113,7 @@ struct ContentView: View {
                 ScrollView {
                     VStack(spacing: 26) {
                         Text("✦").font(.largeTitle).foregroundColor(.pink.opacity(0.6))
-                        Text(story.text).font(.system(size: 25, weight: .bold, design: .rounded)).multilineTextAlignment(.center)
+                        Text(story.text).font(.system(size: 26, weight: .bold, design: .rounded)).foregroundColor(Color(red: 0.19, green: 0.17, blue: 0.19)).multilineTextAlignment(.center)
                         Text(chinese ? "左右滑动，看不同的建议" : "Swipe left or right for another perspective")
                             .font(.footnote).foregroundColor(.secondary)
                         Text("\(model.index + 1) / \(model.stories.count)").font(.caption).foregroundColor(.secondary)
@@ -127,16 +135,42 @@ struct ContentView: View {
 
 private struct Mascot: View {
     let angel: Bool
+    @State private var blink = false
+    @State private var floating = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var face: Color { angel ? Color(red: 0.608, green: 0.784, blue: 0.863) : Color(red: 0.914, green: 0.576, blue: 0.525) }
+    private var ink: Color { angel ? Color(red: 0.259, green: 0.404, blue: 0.475) : Color(red: 0.38, green: 0.278, blue: 0.294) }
     var body: some View {
         ZStack {
             if angel {
-                Ellipse().stroke(Color.yellow.opacity(0.8), lineWidth: 4).frame(width: 52, height: 13).offset(y: -45).rotationEffect(.degrees(-10))
+                HStack(spacing: 42) { Ellipse(); Ellipse() }.fill(Color(red: 1, green: 0.992, blue: 0.973)).frame(width: 72, height: 25).offset(y: 7)
             } else {
-                HStack(spacing: 24) { Image(systemName: "triangle.fill"); Image(systemName: "triangle.fill") }.font(.system(size: 20)).foregroundColor(.red.opacity(0.65)).offset(y: -36)
+                HStack(spacing: 25) {
+                    RoundedRectangle(cornerRadius: 9).rotationEffect(.degrees(-25))
+                    RoundedRectangle(cornerRadius: 9).rotationEffect(.degrees(25))
+                }.fill(Color(red: 0.835, green: 0.431, blue: 0.404)).frame(width: 58, height: 22).offset(y: -25)
             }
-            Circle().fill(angel ? Color(red: 0.52, green: 0.76, blue: 0.84) : Color(red: 0.91, green: 0.53, blue: 0.50)).frame(width: 70, height: 70)
-            HStack(spacing: 16) { Capsule().frame(width: 7, height: 12); Capsule().frame(width: 7, height: 12) }.offset(y: -4)
-            Text("⌣").font(.system(size: 21, weight: .bold)).offset(y: 12)
-        }.foregroundColor(Color.black.opacity(0.55)).accessibilityLabel(angel ? "Angel" : "Devil")
+            Ellipse().fill(face).frame(width: 62, height: 60).shadow(color: ink.opacity(0.14), radius: 5, y: 4)
+            HStack(spacing: 12) { Capsule().frame(width: 8, height: 2); Capsule().frame(width: 8, height: 2) }.foregroundColor(ink.opacity(0.68)).offset(y: -10)
+            HStack(spacing: 14) { Ellipse().frame(width: 6, height: blink ? 1 : 10); Ellipse().frame(width: 6, height: blink ? 1 : 10) }.foregroundColor(ink).offset(y: 0)
+            Smile().stroke(ink, style: StrokeStyle(lineWidth: 1.8, lineCap: .round)).frame(width: 12, height: 7).offset(y: 14)
+            if angel { Ellipse().stroke(Color(red: 0.902, green: 0.741, blue: 0.459), lineWidth: 4).frame(width: 42, height: 11).rotationEffect(.degrees(-8)).offset(y: -38) }
+        }
+        .frame(width: 82, height: 82)
+        .offset(y: floating ? -3 : 0)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: angel ? 3.7 : 2.6).repeatForever(autoreverses: true)) { floating = true }
+            Timer.scheduledTimer(withTimeInterval: angel ? 3.4 : 2.8, repeats: true) { _ in
+                withAnimation(.easeInOut(duration: 0.1)) { blink = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { withAnimation(.easeInOut(duration: 0.1)) { blink = false } }
+            }
+        }
+        .accessibilityLabel(angel ? "Angel" : "Devil")
+    }
+}
+private struct Smile: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path(); path.move(to: CGPoint(x: 0, y: 0)); path.addQuadCurve(to: CGPoint(x: rect.width, y: 0), control: CGPoint(x: rect.midX, y: rect.height * 1.4)); return path
     }
 }
