@@ -134,7 +134,7 @@ struct ContentView: View {
             Text("↑ " + l("下一个","Next"))
             Spacer(minLength:8)
             Text(l("天使","Angel") + " →")
-        }.font(.system(size:11)).tracking(0.22).foregroundColor(Color(hex:0x6e5964)).padding(.horizontal,26).frame(width:width).opacity(show ? 0.68:0).offset(y:show ? 0:4).position(x:width/2,y:height-bottom-94.5).allowsHitTesting(false)
+        }.font(.system(size:11)).foregroundColor(Color(hex:0x6e5964)).padding(.horizontal,26).frame(width:width).opacity(show ? 0.68:0).offset(y:show ? 0:4).position(x:width/2,y:height-bottom-94.5).allowsHitTesting(false)
     }
     func navItem(_ title:String,icon:String,active:Bool,action:@escaping ()->Void)->some View {
         let post = icon == "plus"
