@@ -1,0 +1,53 @@
+name: Interactive iOS simulator
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  interactive:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native app
+        run: |
+          xcodebuild -project Between.xcodeproj -target Between -configuration Debug -sdk iphonesimulator CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/between-build" CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/build.log" || { cat "$RUNNER_TEMP/build.log"; exit 1; }
+      - name: Fetch remote simulator tools
+        run: |
+          git clone https://github.com/plu/sim-remote.git "$RUNNER_TEMP/sim-remote"
+          cd "$RUNNER_TEMP/sim-remote"
+          git checkout a6267f0c215b507ec2558ad4b0708393fa8e2190
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: ${{ runner.temp }}/sim-remote
+          experimental: true
+      - name: Start native app and authenticated remote viewer
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/sim-remote"
+          mise run install
+          mise run build
+          ./scripts/boot-sim.sh
+          DEVICE=$(xcrun simctl list devices booted -j | python3 -c 'import json,sys; print(next(x["udid"] for v in json.load(sys.stdin)["devices"].values() for x in v if x["state"]=="Booted"))')
+          xcrun simctl install "$DEVICE" "$RUNNER_TEMP/between-build/Between.app"
+          xcrun simctl launch "$DEVICE" com.example.between.preview -preview-fixture
+          TOKEN=$(openssl rand -hex 24)
+          echo "::add-mask::$TOKEN"
+          RUNNER_TRACKING_ID="" nohup mise exec -- node src/server/index.ts --host 127.0.0.1 --port 8080 --token "$TOKEN" > "$RUNNER_TEMP/remote.log" 2>&1 &
+          brew install cloudflared
+          RUNNER_TRACKING_ID="" nohup cloudflared tunnel --url http://127.0.0.1:8080 --no-autoupdate > "$RUNNER_TEMP/tunnel.log" 2>&1 &
+          for i in $(seq 1 90); do
+            URL=$(grep -Eo 'https://[a-z0-9-]+\.trycloudflare\.com' "$RUNNER_TEMP/tunnel.log" | head -1 || true)
+            if [ -n "$URL" ]; then break; fi
+            sleep 2
+          done
+          test -n "$URL"
+          printf '%s/?token=%s\n' "$URL" "$TOKEN" > "$RUNNER_TEMP/interactive-url.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: interactive-url
+          path: ${{ runner.temp }}/interactive-url.txt
+          retention-days: 1
+      - name: Keep simulator available for twenty minutes
+        run: |
+          for i in $(seq 1 120); do sleep 10; done
