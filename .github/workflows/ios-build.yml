@@ -1,0 +1,14 @@
+name: Native iOS simulator build
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build without code signing
+        run: xcodebuild -project Between.xcodeproj -target Between -configuration Debug -sdk iphonesimulator CODE_SIGNING_ALLOWED=NO build
