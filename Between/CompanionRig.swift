@@ -27,6 +27,7 @@ struct CompanionRig: View {
     var body: some View {
         ZStack {
             BuddyWebView(angel: angel, leader: leader, gap: gap, motion: !reduceMotion, bridge: bridge)
+                .id("\(leader)-\(gap)-\(!reduceMotion)")
             Color.clear
                 .frame(width: 67, height: 67)
                 .contentShape(Rectangle())
@@ -87,6 +88,11 @@ private final class BuddyBridge {
         queue.removeAll()
         pending.forEach { web.evaluateJavaScript($0, completionHandler: nil) }
     }
+
+    func detach() {
+        web = nil
+        ready = false
+    }
 }
 
 private struct BuddyWebView: UIViewRepresentable {
@@ -107,6 +113,7 @@ private struct BuddyWebView: UIViewRepresentable {
         web.scrollView.contentInsetAdjustmentBehavior = .never
         web.isUserInteractionEnabled = false
         web.navigationDelegate = context.coordinator
+        bridge.detach()
         web.loadHTMLString(BuddyHTML.page(angel: angel, leader: leader, gap: gap, motion: motion), baseURL: nil)
         return web
     }
@@ -305,6 +312,7 @@ html[data-motion=off] .app[data-leader] .buddy .buddy-face{animation:none!import
 html[data-motion=off] .tap-bubble{animation:none;opacity:1}
 .tap-bubble{top:-28px;left:50%;width:max-content;max-width:110px;padding:5px 9px;border-radius:14px;background:#fffdf8;box-shadow:0 4px 13px #815f641f;color:#9b5752;font-size:11px;letter-spacing:0}
 .buddy-angel .tap-bubble{color:#507d98}
+.tap-bubble{top:100%;margin-top:5px;max-width:130px;white-space:normal;overflow:visible}
 .buddy[data-tap=winning] .smile{width:14px!important;height:9px!important;background:#80565b!important;border:0!important;border-radius:2px 2px 9px 9px!important}
 .buddy-devil[data-tap=behind] .buddy-face::before{transform:translateY(2px) rotate(22deg)!important}
 .buddy-devil[data-tap=behind] .buddy-face::after{transform:translateY(2px) rotate(-22deg)!important}
