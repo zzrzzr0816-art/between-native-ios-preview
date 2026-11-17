@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct NativeReply: Decodable { let id: String?; let author: String; let text: String }
-struct NativeAnswer: Decodable, Identifiable {
+struct NativeReply: Codable { let id: String?; let author: String; let text: String }
+struct NativeAnswer: Codable, Identifiable {
     let id: String
     let author: String
     let side: String
@@ -9,12 +9,21 @@ struct NativeAnswer: Decodable, Identifiable {
     var likes: Int
     var replies: [NativeReply]
 }
-struct NativeStory: Decodable, Identifiable {
+struct NativeStory: Codable, Identifiable {
     let id: String
     let text: String
     var detail: String? = nil
     let created: Double
     var answers: [NativeAnswer]
+}
+struct NativeLocalState: Codable {
+    var localStories: [NativeStory] = []
+    var snapshots: [NativeStory] = []
+    var reports: [String] = []
+    var hidden: [String] = []
+    var liked: [String: Bool] = [:]
+    var best: [String: String] = [:]
+    var updates: [String: [String]] = [:]
 }
 struct NativeFeed: Decodable { let stories: [NativeStory] }
 enum NativeCamp: String {

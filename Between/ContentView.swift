@@ -18,11 +18,19 @@ struct ContentView: View {
     @State var replyText = ""
     @State var snapshots: [NativeStory] = []
     @State var reports: [String] = []
+    @State var hidden: [String] = []
+    @State var liked: [String:Bool] = [:]
+    @State var best: [String:String] = [:]
+    @State var updates: [String:[String]] = [:]
+    @State var detailStory: NativeStory? = nil
+    @State var reportReason = "harassment"
+    @State var toastText: String? = nil
+    @AppStorage("native.motion") var motionOn = true
     @State var notice: String? = nil
     @FocusState var composerFocused: Bool
     var zh: Bool { language == "zh" }
     func l(_ a:String,_ b:String)->String { zh ? a:b }
-    var transitionAnimation: Animation? { reduceMotion ? nil:H5Design.settling }
+    var transitionAnimation: Animation? { (reduceMotion || !motionOn) ? nil:H5Design.settling }
     var devilCount:Int { model.current?.answers.filter { $0.side == "devil" }.count ?? 0 }
     var angelCount:Int { model.current?.answers.filter { $0.side == "angel" }.count ?? 0 }
     var body: some View {
@@ -42,18 +50,42 @@ struct ContentView: View {
                 companions(width:w,top:top,height:h).zIndex(utility == nil ? 1:(utility == "write" ? 9:11))
                 if let page = utility { utilityPage(page,width:w,height:h,top:top,bottom:bottom).zIndex(10).transition(.opacity.combined(with:.offset(y:12))) }
                 if let answer = selectedReply { replyOverlay(answer,width:w,height:h,top:top).zIndex(20).transition(.opacity) }
+                if let story = detailStory { detailPage(story,width:w,height:h,top:top,bottom:bottom).zIndex(22).transition(.opacity) }
+                if let text = toastText { toastView(text).zIndex(30) }
             }.frame(width:w,height:h).clipped().offset(y:-top)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:devilCount)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:angelCount)
         }.foregroundColor(H5Design.ink).tint(H5Design.ink).buttonStyle(.plain)
-            .task { await model.load(language) }
-            .alert(l("提示","Notice"),isPresented:Binding(get:{notice != nil},set:{if !$0 {notice=nil}})) { Button(l("知道了","OK")){notice=nil} } message:{Text(notice ?? "")}
+            .task { await model.load(language); restoreLocal() }
+    }
+    func toast(_ text:String){
+        withAnimation(reduceMotion || !motionOn ? nil:.easeOut(duration:0.2)){toastText=text}
+        DispatchQueue.main.asyncAfter(deadline:.now()+2.5){if toastText==text{withAnimation(nil){toastText=nil}}}
+    }
+    func toastView(_ text:String)->some View {
+        Text(text).font(.system(size:12)).foregroundColor(.white).padding(.horizontal,18).padding(.vertical,11)
+            .background(Color(hex:0x443a43),in:Capsule()).fixedSize()
+            .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.bottom).padding(.bottom,120).allowsHitTesting(false)
+            .transition(.opacity)
+    }
+    func restoreLocal(){
+        guard let data=UserDefaults.standard.data(forKey:"native.local.v1"),let state=try? JSONDecoder().decode(NativeLocalState.self,from:data) else{return}
+        snapshots=state.snapshots;reports=state.reports;hidden=state.hidden;liked=state.liked;best=state.best;updates=state.updates
+        let local=state.localStories.filter{!hidden.contains($0.id)}
+        if !local.isEmpty { model.stories.insert(contentsOf:local,at:0) }
+        model.stories.removeAll{hidden.contains($0.id)}
+    }
+    func persistLocal(){
+        var state=NativeLocalState()
+        state.localStories=model.stories.filter{$0.id.hasPrefix("local-")}
+        state.snapshots=snapshots;state.reports=reports;state.hidden=hidden;state.liked=liked;state.best=best;state.updates=updates
+        if let data=try? JSONEncoder().encode(state){UserDefaults.standard.set(data,forKey:"native.local.v1")}
     }
     func homeHeader(width:CGFloat,top:CGFloat)->some View {
         ZStack(alignment:.topLeading) {
             (Text("between").foregroundColor(Color(hex:0x42353f))+Text(".").foregroundColor(Color(hex:0xe0776e))).font(.system(size:23,weight:.heavy)).tracking(-1.5).frame(height:42).position(x:69,y:top+37)
             HStack(spacing:7){
-                Button(zh ? "中文":"EN"){language=zh ? "en":"zh";Task{await model.load(language)}}.accessibilityLabel("Switch language")
+                Button(zh ? "中文":"EN"){language=zh ? "en":"zh";Task{await model.load(language);restoreLocal()}}.accessibilityLabel("Switch language")
                 Button {withAnimation(transitionAnimation){utility="more"}} label:{Text("•••")}.accessibilityLabel(l("更多","More"))
             }.font(.system(size:14)).buttonStyle(HeaderButtonStyle()).position(x:width-67.5,y:top+37)
             Text(l("交互原型 · 内容仅保存在当前浏览器","PROTOTYPE · Data stays in this browser")).font(.system(size:10)).foregroundColor(Color(hex:0x89757b)).frame(width:width).position(x:width/2,y:top+72.5)
@@ -85,7 +117,7 @@ struct ContentView: View {
                 verticalSign=sign;verticalTarget=target
                 let a=H5Design.cardHeight(story.text,width:width,available:area),b=H5Design.cardHeight(model.stories[target].text,width:width,available:area)
                 verticalProgress=H5Design.verticalProgress(raw:value.translation.height,travel:H5Design.verticalTravel(area:area,current:a,next:b));edgeOffset=0
-            } else {verticalTarget=nil;edgeOffset=sign*32*(1-exp(-abs(value.translation.height)/100))}
+            } else {verticalTarget=nil;edgeOffset=sign*32*(1-exp(-abs(value.translation.height)/100));if abs(value.translation.height)>40 {toast(l("这是最后一条啦","You’re all caught up"))}}
         }
     }
     func feedEnded(_ value:DragGesture.Value,width:CGFloat,area:CGFloat){
@@ -104,13 +136,25 @@ struct ContentView: View {
         } else {withAnimation(transitionAnimation){edgeOffset=0};axis=nil}
     }
     func storyCard(_ story:NativeStory,width:CGFloat,height:CGFloat)->some View {
-        VStack(spacing:0){
+        let hours = max(0,Int(ceil((story.created/1000+86400-Date().timeIntervalSince1970)/3600)))
+        let long = story.text.count > 180
+        return VStack(spacing:0){
             Text("✦").font(.system(size:27)).foregroundColor(Color(hex:0xd7958c)).frame(height:32).padding(.top,34)
-            Text(story.text).font(.system(size:H5Design.titleSize(width),weight:.bold)).tracking(-0.8).lineSpacing(max(0,H5Design.titleSize(width)*1.35-UIFont.systemFont(ofSize:H5Design.titleSize(width),weight:.bold).lineHeight)).multilineTextAlignment(.center).fixedSize(horizontal:false,vertical:true).padding(.top,20).frame(maxWidth:.infinity)
+            if long {
+                ScrollView(.vertical,showsIndicators:false){
+                    Text(story.text).font(.system(size:H5Design.titleSize(width),weight:.bold)).tracking(-0.8).lineSpacing(max(0,H5Design.titleSize(width)*1.35-UIFont.systemFont(ofSize:H5Design.titleSize(width),weight:.bold).lineHeight)).multilineTextAlignment(.center).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity)
+                }.frame(maxHeight:H5Design.titleSize(width)*4.05).padding(.top,20)
+                Text(l("上下拖动阅读全文","Drag to read")).font(.system(size:11)).foregroundColor(H5Design.muted).padding(.top,8)
+            } else {
+                Text(story.text).font(.system(size:H5Design.titleSize(width),weight:.bold)).tracking(-0.8).lineSpacing(max(0,H5Design.titleSize(width)*1.35-UIFont.systemFont(ofSize:H5Design.titleSize(width),weight:.bold).lineHeight)).multilineTextAlignment(.center).fixedSize(horizontal:false,vertical:true).padding(.top,20).frame(maxWidth:.infinity)
+            }
             if let detail = story.detail, !detail.isEmpty {
                 Text(detail).font(.system(size:15)).foregroundColor(Color(hex:0x5e5259)).lineSpacing(max(0,15*1.65-UIFont.systemFont(ofSize:15).lineHeight)).multilineTextAlignment(.center).fixedSize(horizontal:false,vertical:true).padding(.top,12).frame(maxWidth:370).frame(maxHeight:UIScreen.main.bounds.height*0.24,alignment:.top).clipped()
             }
-            Text("◷ 24 \(l("小时后消失","hours left"))  ·  \(story.answers.count) \(l("条建议","responses"))").font(.system(size:12)).foregroundColor(H5Design.muted).padding(.top,18).padding(.bottom,34)
+            if let update = updates[story.id]?.last, !update.isEmpty {
+                Text(l("后续进展","Update")+" · "+update).font(.system(size:12)).foregroundColor(Color(hex:0x816e75)).multilineTextAlignment(.center).lineLimit(2).padding(.top,14).frame(maxWidth:330)
+            }
+            Text("◷ \(hours) \(l("小时后消失","hours left"))  ·  \(story.answers.count) \(l("条建议","responses"))").font(.system(size:12)).foregroundColor(H5Design.muted).padding(.top,18).padding(.bottom,34)
         }.padding(.horizontal,26).frame(width:width-52,height:height).clipped().background(H5Design.card,in:RoundedRectangle(cornerRadius:30))
             .overlay(RoundedRectangle(cornerRadius:30).stroke(Color.white.opacity(0.79),lineWidth:1)).overlay(RoundedRectangle(cornerRadius:24).stroke(Color.white.opacity(0.67),lineWidth:1).padding(7)).shadow(color:Color(hex:0xa46872).opacity(0.17),radius:24,x:0,y:20).shadow(color:Color(hex:0x896d7b).opacity(0.08),radius:6,x:0,y:4)
     }
