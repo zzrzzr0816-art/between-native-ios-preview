@@ -59,21 +59,66 @@ extension ContentView {
         guard model.stories.indices.contains(model.index) else{return}
         model.stories[model.index].answers.append(NativeAnswer(id:UUID().uuidString,author:l("你 · 预览","You · preview"),side:chosen.rawValue,text:text,likes:0,replies:[]));composer="";composerFocused=false
     }
-    func utilityPage(_ page:String,width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
-        VStack(alignment:.leading,spacing:18){
-            HStack{Button {withAnimation(transitionAnimation){utility=nil}} label:{Image(systemName:"chevron.left").frame(width:44,height:44)};Text(page=="write" ? l("说说你的烦恼","What's on your mind?"):page=="profile" ? l("我的","Me"):l("更多","More")).font(.system(size:22,weight:.bold));Spacer()}.padding(.top,top+12)
+    func utilityPage(_ page:String,width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->AnyView {
+        if page == "profile" { return AnyView(profilePage(width:width,height:height,top:top,bottom:bottom)) }
+        return AnyView(VStack(alignment:.leading,spacing:18){
+            HStack{Button {withAnimation(transitionAnimation){utility=nil}} label:{Image(systemName:"chevron.left").frame(width:44,height:44)};Text(page=="write" ? l("说说你的烦恼","What's on your mind?"):l("更多","More")).font(.system(size:22,weight:.bold));Spacer()}.padding(.top,top+12)
             if page=="write" {
                 Text(l("匿名发布","Anonymous")).font(.system(size:12,weight:.bold)).foregroundColor(NativeCamp.devil.accent)
                 TextEditor(text:$replyText).font(.system(size:17)).padding(12).background(.white,in:RoundedRectangle(cornerRadius:22)).overlay(RoundedRectangle(cornerRadius:22).stroke(Color(hex:0xf5e6df),lineWidth:1))
                 Text(l("原生发布页面预览，内容不会提交服务器。","Native compose preview. This draft is not sent to the server.")).font(.system(size:12)).foregroundColor(H5Design.muted)
             }else{
                 Text(l("你的小天地，都在这里。","Your little corner, all in one place.")).font(.system(size:15)).padding(20).frame(maxWidth:.infinity,alignment:.leading).background(H5Design.background,in:RoundedRectangle(cornerRadius:21))
-                ForEach([l("我的烦恼","My stories"),l("我的建议","My responses"),l("收藏","Saved"),l("举报审核反馈","Report updates")],id:\.self){title in
-                    HStack{Text(title);Spacer();Image(systemName:"chevron.right").font(.system(size:12))}.font(.system(size:15,weight:.medium)).padding(18).background(.white,in:RoundedRectangle(cornerRadius:18))
-                }
-                Text(l("原生页面布局预览，个人功能尚未接入。","Native layout preview. Personal features are not connected yet.")).font(.system(size:12)).foregroundColor(H5Design.muted);Spacer()
             }
-        }.padding(.horizontal,22).padding(.bottom,bottom+24).frame(width:width,height:height).background(Color(hex:0xfffaf8))
+        }.padding(.horizontal,22).padding(.bottom,bottom+24).frame(width:width,height:height).background(Color(hex:0xfffaf8)))
+    }
+    func profilePage(width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
+        let me = l("你 · 预览","You · preview")
+        let answers = model.stories.reduce(0) { $0 + $1.answers.filter { $0.author == me }.count }
+        let stories = 0
+        let columns = [GridItem(.flexible(),spacing:10),GridItem(.flexible(),spacing:10)]
+        return VStack(spacing:0){
+            HStack{
+                Text(l("我的","Me")).font(.system(size:19,weight:.bold)).foregroundColor(Color(hex:0x302b32))
+                Spacer()
+                Button {withAnimation(transitionAnimation){utility=nil}} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x75666d)).frame(width:44,height:44)}.accessibilityLabel(l("关闭","Close"))
+            }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,86)
+            ScrollView {
+                VStack(alignment:.leading,spacing:0){
+                    VStack(alignment:.leading,spacing:8){
+                        Text(l("留给自己的一角","A LITTLE SPACE FOR YOU")).font(.system(size:10)).kerning(0.8).foregroundColor(Color(hex:0xbb8b82))
+                        Text(l("你的小天地，都在这里。","Your little corner, all in one place.")).font(.system(size:15,weight:.semibold)).foregroundColor(Color(hex:0x6a5152))
+                    }.padding(24).frame(maxWidth:.infinity,alignment:.leading)
+                        .background(LinearGradient(stops:[.init(color:Color(hex:0xf9e5df),location:0),.init(color:Color(hex:0xf5eeea),location:0.55),.init(color:Color(hex:0xe6f1f3),location:1)],startPoint:.topLeading,endPoint:.bottomTrailing),in:RoundedRectangle(cornerRadius:21)).padding(.top,14)
+                    LazyVGrid(columns:columns,spacing:10){
+                        profileTile("✎",iconBG:0xfae7e2,iconColor:0xbe7770,label:l("我的烦恼","My stories"),count:stories)
+                        profileTile("✧",iconBG:0xe7f1f6,iconColor:0x789fb2,label:l("我的建议","My responses"),count:answers)
+                        profileTile("♡",iconBG:0xfaeee6,iconColor:0xc58c78,label:l("收藏","Saved"),count:0)
+                        profileTile("◌",iconBG:0xefecf3,iconColor:0xa096b0,label:l("举报审核反馈","Report updates"),count:nil)
+                    }.padding(.top,15)
+                    HStack(spacing:10){
+                        Text("◈").font(.system(size:18)).foregroundColor(Color(hex:0xba9087))
+                        Text(l("审核界面演示","Moderation preview"))
+                        Spacer(minLength:0)
+                        Text("↗").foregroundColor(Color(hex:0xc7b2ab))
+                    }.font(.system(size:12)).foregroundColor(Color(hex:0x76635f)).padding(.horizontal,15).padding(.vertical,13)
+                        .background(.white,in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xf1e7e2),lineWidth:1)).padding(.top,14)
+                    Text(l("原型无账号、服务器或真实审核","Prototype: no account, server, or live moderation")).font(.system(size:10)).foregroundColor(Color(hex:0xb8aaa5)).padding(.top,17).padding(.horizontal,2)
+                }.padding(.horizontal,20).padding(.bottom,bottom+20)
+            }
+        }.frame(width:width,height:height).background(Color(hex:0xfffbf9))
+    }
+    func profileTile(_ icon:String,iconBG:UInt32,iconColor:UInt32,label:String,count:Int?)->some View {
+        VStack(alignment:.leading,spacing:0){
+            Text(icon).font(.system(size:20)).foregroundColor(Color(hex:iconColor)).frame(width:34,height:34).background(Color(hex:iconBG),in:RoundedRectangle(cornerRadius:12))
+            Spacer(minLength:12)
+            HStack(alignment:.firstTextBaseline,spacing:7){
+                Text(label).font(.system(size:13,weight:.bold)).foregroundColor(Color(hex:0x59484b))
+                if let count { Text("\(count)").font(.system(size:11,weight:.medium)).foregroundColor(Color(hex:0xb5a39e)) }
+            }
+        }.padding(14).frame(maxWidth:.infinity,minHeight:132,alignment:.leading)
+            .background(.white,in:RoundedRectangle(cornerRadius:19)).overlay(RoundedRectangle(cornerRadius:19).stroke(Color(hex:0xf2e8e3),lineWidth:1))
+            .overlay(Text("↗").font(.system(size:15)).foregroundColor(Color(hex:0xc5b5af)).padding(.top,15).padding(.trailing,15),alignment:.topTrailing)
     }
     func replyOverlay(_ answer:NativeAnswer,width:CGFloat,height:CGFloat,top:CGFloat)->some View {
         ZStack{
