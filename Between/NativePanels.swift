@@ -8,7 +8,7 @@ extension ContentView {
                 Text(l("大家的建议","The conversation")).font(.system(size:19,weight:.bold)).foregroundColor(Color(hex:0x302b32))
                 Spacer()
                 Button {closeComments()} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x75666d)).frame(width:44,height:44)}.accessibilityLabel(l("关闭","Close"))
-            }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,91)
+            }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,115)
             HStack(spacing:8){campTab(.devil,chosen:chosen,count:devilCount);campTab(.angel,chosen:chosen,count:angelCount)}.padding(.horizontal,20).padding(.bottom,12)
             ScrollView {
                 VStack(spacing:10){
@@ -23,7 +23,7 @@ extension ContentView {
             }
             HStack(spacing:9){
                 TextField(l("说点什么…","Say something kind…"),text:$composer).font(.system(size:16)).padding(.horizontal,13).padding(.vertical,13).frame(minHeight:48).background(Color(hex:0xf7f4f1),in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xeee8e4),lineWidth:1)).focused($composerFocused)
-                Button {sendPreview(chosen)} label:{Text(l("发送","Send")).font(.system(size:15,weight:.bold)).foregroundColor(.white).padding(.horizontal,16).frame(minHeight:44).background(Color(hex:chosen == .devil ? 0xc6786d:0x628fa9),in:RoundedRectangle(cornerRadius:16))}.buttonStyle(PressScale())
+                Button {sendPreview(chosen)} label:{HStack(spacing:4){Text(l("发送","Send"));Text("↑")}.font(.system(size:15,weight:.bold)).foregroundColor(.white).padding(.horizontal,16).frame(minHeight:44).background(Color(hex:chosen == .devil ? 0xc6786d:0x628fa9),in:RoundedRectangle(cornerRadius:16))}.buttonStyle(PressScale())
             }.padding(.horizontal,20).padding(.top,12).padding(.bottom,max(bottom+12,keyboardHeight+8)).background(chosen.background).overlay(Rectangle().fill(Color(hex:0xeee5e2)).frame(height:1),alignment:.top)
         }.frame(width:width,height:height).background(chosen.background)
             .simultaneousGesture(DragGesture(minimumDistance:14).onChanged{value in

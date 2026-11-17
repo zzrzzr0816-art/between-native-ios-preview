@@ -59,7 +59,7 @@ struct ContentView: View {
                 if let page = utility { utilityPage(page,width:w,height:h,top:top,bottom:bottom).zIndex(10).transition(.opacity.combined(with:.offset(y:12))) }
                 if let answer = selectedReply { replyOverlay(answer,width:w,height:h,top:top,bottom:bottom).zIndex(20).transition(.opacity) }
                 if let story = detailStory { detailPage(story,width:w,height:h,top:top,bottom:bottom).zIndex(22).transition(.opacity) }
-                if let text = toastText { toastView(text).zIndex(30) }
+                if let text = toastText { toastView(text,bottom:bottom).zIndex(30) }
             }.frame(width:w,height:h).clipped().offset(y:-top)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:devilCount)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:angelCount)
@@ -84,10 +84,10 @@ struct ContentView: View {
         withAnimation(reduceMotion || !motionOn ? nil:.easeOut(duration:0.2)){toastText=text}
         DispatchQueue.main.asyncAfter(deadline:.now()+2.5){if toastText==text{withAnimation(nil){toastText=nil}}}
     }
-    func toastView(_ text:String)->some View {
+    func toastView(_ text:String,bottom:CGFloat)->some View {
         Text(text).font(.system(size:12)).foregroundColor(.white).padding(.horizontal,18).padding(.vertical,11)
             .background(Color(hex:0x443a43),in:Capsule()).fixedSize()
-            .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.bottom).padding(.bottom,120).allowsHitTesting(false)
+            .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.bottom).padding(.bottom,120+bottom).allowsHitTesting(false)
             .transition(.opacity)
     }
     func restoreLocal(){
