@@ -109,10 +109,12 @@ struct ContentView: View {
             .overlay(RoundedRectangle(cornerRadius:30).stroke(Color.white.opacity(0.79),lineWidth:1)).overlay(RoundedRectangle(cornerRadius:24).stroke(Color.white.opacity(0.67),lineWidth:1).padding(7)).shadow(color:Color(hex:0xa46872).opacity(0.17),radius:24,x:0,y:20)
     }
     func companions(width:CGFloat,top:CGFloat)->some View {
-        let devilWeight:CGFloat=camp == .devil ? campProgress:0,angelWeight:CGFloat=camp == .angel ? campProgress:0
+        let reaction = camp == .devil ? "devil" : camp == .angel ? "angel" : ""
+        let gesture = camp == nil ? 0 : campProgress
+        let strong = abs(devilCount-angelCount) > 1
         return ZStack(alignment:.topLeading){
-            CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:abs(devilCount-angelCount)>1,available:CGSize(width:width,height:800)).scaleEffect(1.15+0.32*devilWeight).opacity(1-Double(angelWeight)).position(x:63,y:top+137)
-            CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:abs(devilCount-angelCount)>1,available:CGSize(width:width,height:800)).scaleEffect(1.15+0.32*angelWeight).opacity(1-Double(devilWeight)).position(x:width-63,y:top+137)
+            CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture).position(x:63,y:top+137)
+            CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture).position(x:width-63,y:top+137)
         }.allowsHitTesting(!settling)
     }
     func bottomNav(width:CGFloat,height:CGFloat,bottom:CGFloat)->some View {
