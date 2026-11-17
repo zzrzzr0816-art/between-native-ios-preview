@@ -18,6 +18,8 @@ extension ContentView {
                     }
                     ForEach(answers){answer in commentCard(answer)}
                 }.padding(.horizontal,20).padding(.top,10).padding(.bottom,18)
+                    .id(chosen)
+                    .transition(.asymmetric(insertion:.move(edge: chosen == .angel ? .trailing:.leading).combined(with:.opacity),removal:.opacity))
             }
             HStack(spacing:9){
                 TextField(l("说点什么…","Say something kind…"),text:$composer).font(.system(size:16)).padding(.horizontal,13).padding(.vertical,13).frame(minHeight:48).background(Color(hex:0xf7f4f1),in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xeee8e4),lineWidth:1)).focused($composerFocused)

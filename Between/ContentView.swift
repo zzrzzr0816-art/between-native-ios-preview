@@ -53,6 +53,9 @@ struct ContentView: View {
                     comments(chosen,width:w,height:h,top:top,bottom:bottom).offset(x:-chosen.sign*w*(1-campProgress)).allowsHitTesting((campProgress>0.99 || axis==2) && !settling)
                 }
                 companions(width:w,top:top,height:h).zIndex(companionsLayer)
+                if let page = utility, page == "write" || page == "more" {
+                    Color(hex:0x302532).opacity(0.40).zIndex(5).contentShape(Rectangle()).onTapGesture{closeUtility()}.transition(.opacity)
+                }
                 if let page = utility { utilityPage(page,width:w,height:h,top:top,bottom:bottom).zIndex(10).transition(.opacity.combined(with:.offset(y:12))) }
                 if let answer = selectedReply { replyOverlay(answer,width:w,height:h,top:top,bottom:bottom).zIndex(20).transition(.opacity) }
                 if let story = detailStory { detailPage(story,width:w,height:h,top:top,bottom:bottom).zIndex(22).transition(.opacity) }
@@ -214,7 +217,17 @@ struct ContentView: View {
         return 1
     }
     func bottomNav(width:CGFloat,height:CGFloat,bottom:CGFloat)->some View {
-        HStack(spacing:0){navItem(l("烦恼","Stories"),icon:"house",active:true){};navItem(l("发布","Post"),icon:"plus",active:false){openWrite()};navItem(l("我的","Me"),icon:"person",active:false){withAnimation(transitionAnimation){utility="profile"}}}.padding(.horizontal,24).padding(.bottom,bottom).frame(width:width,height:70+bottom).background(ZStack{BlurView();Color(hex:0xfff8fc).opacity(0.53)}).overlay(Rectangle().fill(Color.white.opacity(0.5)).frame(height:1),alignment:.top).position(x:width/2,y:height-(70+bottom)/2)
+        HStack(spacing:0){navItem(l("烦恼","Stories"),icon:"house",active:true){goHome()};navItem(l("发布","Post"),icon:"plus",active:false){openWrite()};navItem(l("我的","Me"),icon:"person",active:false){withAnimation(transitionAnimation){utility="profile"}}}.padding(.horizontal,24).padding(.bottom,bottom).frame(width:width,height:70+bottom).background(ZStack{BlurView();Color(hex:0xfff8fc).opacity(0.53)}).overlay(Rectangle().fill(Color.white.opacity(0.5)).frame(height:1),alignment:.top).position(x:width/2,y:height-(70+bottom)/2)
+    }
+    func goHome(){
+        replyText=""
+        withAnimation(transitionAnimation){utility=nil;detailStory=nil;selectedReply=nil}
+        resetIdleHints()
+    }
+    func closeUtility(){
+        replyText=""
+        withAnimation(transitionAnimation){utility=nil}
+        resetIdleHints()
     }
     func openWrite(){
         writePeek = Bool.random() ? .devil:.angel
