@@ -15,7 +15,6 @@ struct NativeStory: Codable, Identifiable {
     var detail: String? = nil
     let created: Double
     var answers: [NativeAnswer]
-    var aiPending: [String: Int]? = nil
 }
 struct NativeLocalState: Codable {
     var localStories: [NativeStory] = []

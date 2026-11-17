@@ -34,7 +34,6 @@ struct ContentView: View {
     @State var guideVisible = false
     @State var composerHeight: CGFloat = 48
     @State var replyHeight: CGFloat = 46
-    @State var aiPulse = false
     @State var likePulse: [String: Bool] = [:]
     @State var reportType = "story"
     @State var reportId = ""

@@ -14,11 +14,6 @@ extension ContentView {
             ScrollView {
                 VStack(spacing:10){
                     let answers=model.current?.answers.filter {$0.side==chosen.rawValue} ?? []
-                    if let pending=model.current?.aiPending?[chosen.rawValue],pending>0 {
-                        HStack(spacing:8){Text("✦").scaleEffect(aiPulse ? 0.8:1).opacity(aiPulse ? 0.45:1);Text(l("AI 角色正在想想法…","AI characters are thinking…"))}
-                            .font(.system(size:12)).foregroundColor(Color(hex:0xaa9694)).frame(maxWidth:.infinity).padding(.vertical,16)
-                            .onAppear{if !reduceMotion{withAnimation(.easeInOut(duration:0.9).repeatForever(autoreverses:true)){aiPulse=true}}}
-                    }
                     if answers.isEmpty {
                         Text(l("还没有建议，来做第一个吧 ✨","No responses yet. Start the conversation ✨")).font(.system(size:14)).foregroundColor(Color(hex:0xa09494)).padding(.vertical,35)
                     }
