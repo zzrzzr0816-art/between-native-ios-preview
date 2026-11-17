@@ -17,6 +17,7 @@ jobs:
           git clone https://github.com/plu/sim-remote.git "$RUNNER_TEMP/sim-remote"
           cd "$RUNNER_TEMP/sim-remote"
           git checkout a6267f0c215b507ec2558ad4b0708393fa8e2190
+          python3 -c 'from pathlib import Path; p=Path("mise.toml"); p.write_text(p.read_text().replace(", exe = \"idb_companion\"", "")); Path("mise.lock").unlink(missing_ok=True)'
       - uses: jdx/mise-action@v4
         with:
           working_directory: ${{ runner.temp }}/sim-remote
