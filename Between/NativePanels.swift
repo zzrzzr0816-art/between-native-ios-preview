@@ -143,10 +143,10 @@ extension ContentView {
         }.padding(.bottom,bottom+20).frame(width:width,height:height*0.62,alignment:.top).background(Color(hex:0xfffbf9)).clipShape(TopRoundedShape(radius:26)).position(x:width/2,y:height-height*0.62/2)
     }
     func moreRow(_ title:String,action:@escaping ()->Void)->some View {
-        Button(action:action) label:{
+        Button(action:action,label:{
             HStack{Text(title);Spacer()}.font(.system(size:15)).foregroundColor(Color(hex:0x59484b)).padding(15).frame(maxWidth:.infinity)
                 .background(.white,in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xeee7e4),lineWidth:1))
-        }
+        })
     }
     func saveSnapshot(){
         guard let story=model.current else{return}

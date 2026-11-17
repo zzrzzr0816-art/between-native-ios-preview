@@ -39,7 +39,7 @@ struct ContentView: View {
                     Color.black.opacity(0.12*Double(campProgress)).allowsHitTesting(false)
                     comments(chosen,width:w,height:h,top:top,bottom:bottom).offset(x:-chosen.sign*w*(1-campProgress)).allowsHitTesting((campProgress>0.99 || axis==2) && !settling)
                 }
-                companions(width:w,top:top,height:h).zIndex(utility == nil ? 1:11)
+                companions(width:w,top:top,height:h).zIndex(utility == nil ? 1:(utility == "write" ? 9:11))
                 if let page = utility { utilityPage(page,width:w,height:h,top:top,bottom:bottom).zIndex(10).transition(.opacity.combined(with:.offset(y:12))) }
                 if let answer = selectedReply { replyOverlay(answer,width:w,height:h,top:top).zIndex(20).transition(.opacity) }
             }.frame(width:w,height:h).clipped().offset(y:-top)
@@ -118,7 +118,7 @@ struct ContentView: View {
         let reaction = camp == .devil ? "devil" : camp == .angel ? "angel" : ""
         let gesture = camp == nil ? 0 : campProgress
         let strong = abs(devilCount-angelCount) > 1
-        let place = CompanionPlacement(width:width,top:top,height:height,profile:utility == "profile",sheet:camp != nil,reply:selectedReply != nil)
+        let place = CompanionPlacement(width:width,top:top,height:height,profile:utility == "profile",sheet:camp != nil,reply:selectedReply != nil,write:utility == "write")
         return ZStack(alignment:.topLeading){
             CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale).position(x:place.devilX,y:place.y)
             CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale).position(x:place.angelX,y:place.y)
@@ -181,10 +181,11 @@ private struct CompanionPlacement:Equatable {
     var angelX:CGFloat=0
     var y:CGFloat=0
     var scale:CGFloat=1
-    init(width:CGFloat,top:CGFloat,height:CGFloat,profile:Bool,sheet:Bool,reply:Bool) {
+    init(width:CGFloat,top:CGFloat,height:CGFloat,profile:Bool,sheet:Bool,reply:Bool,write:Bool) {
         if reply { devilX=11;angelX=width-11;y=height*0.46+29;scale=1 }
         else if sheet { devilX=width/2-20.1;angelX=width/2+20.1;y=top+22.4;scale=0.67 }
         else if profile { devilX=width-51.5;angelX=width-31.4;y=top+33.4;scale=0.53 }
+        else if write { devilX=width*0.16;angelX=width*0.84;y=height*0.12+9;scale=0.9 }
         else { devilX=63;angelX=width-63;y=top+137;scale=1 }
     }
 }
