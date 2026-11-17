@@ -1,0 +1,30 @@
+name: Device IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ipa:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build unsigned device app
+        run: |
+          xcodebuild -project Between.xcodeproj -target Between -configuration Release -sdk iphoneos -arch arm64 CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/device-build" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build > "$RUNNER_TEMP/device-build.log" 2>&1 || { cat "$RUNNER_TEMP/device-build.log"; exit 1; }
+      - name: Package unsigned ipa
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/Payload"
+          cp -R "$RUNNER_TEMP/device-build/Between.app" "$RUNNER_TEMP/Payload/"
+          cd "$RUNNER_TEMP"
+          zip -qry Between-unsigned.ipa Payload
+          ls -lh Between-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Between-unsigned-ipa
+          path: ${{ runner.temp }}/Between-unsigned.ipa
+          retention-days: 7
