@@ -34,7 +34,7 @@ struct ContentView: View {
                 bottomNav(width:w,height:h,bottom:bottom)
                 if let chosen = camp {
                     Color.black.opacity(0.12*Double(campProgress)).allowsHitTesting(false)
-                    comments(chosen,width:w,height:h,top:top,bottom:bottom).offset(x:-chosen.sign*w*(1-campProgress)).allowsHitTesting(campProgress>0.99 && !settling)
+                    comments(chosen,width:w,height:h,top:top,bottom:bottom).offset(x:-chosen.sign*w*(1-campProgress)).allowsHitTesting((campProgress>0.99 || axis==2) && !settling)
                 }
                 companions(width:w,top:top)
                 if let page = utility { utilityPage(page,width:w,height:h,top:top,bottom:bottom).zIndex(10).transition(.opacity.combined(with:.offset(y:12))) }

@@ -23,10 +23,10 @@ extension ContentView {
         }.frame(width:width,height:height).background(chosen.background)
             .simultaneousGesture(DragGesture(minimumDistance:14).onChanged{value in
                 guard abs(value.translation.width)>abs(value.translation.height),!composerFocused,!settling else{return}
-                let distance=max(0,value.translation.width * -chosen.sign);campProgress=max(0,1-distance/width)
+                axis=2;let distance=max(0,value.translation.width * -chosen.sign);campProgress=max(0,1-distance/width)
             }.onEnded{value in
                 guard abs(value.translation.width)>abs(value.translation.height),!composerFocused,!settling else{return}
-                if value.translation.width * -chosen.sign > max(65,width*0.23){closeComments()}else{withAnimation(transitionAnimation){campProgress=1}}
+                if value.translation.width * -chosen.sign > max(65,width*0.23){closeComments()}else{withAnimation(transitionAnimation){campProgress=1};axis=nil}
             })
     }
     func campTab(_ value:NativeCamp,chosen:NativeCamp,count:Int)->some View {
