@@ -317,6 +317,9 @@ struct ContentView: View {
             if model.index >= model.stories.count {model.index=max(0,model.stories.count-1)}
             if let d=detailStory,expired.contains(d.id){detailStory=nil}
             if let s=snapshotStory,expired.contains(s.id){snapshotStory=nil}
+            let before=snapshots.count
+            snapshots.removeAll{expired.contains($0.id)}
+            if snapshots.count != before {persistLocal()}
             if let a=selectedReply,!model.stories.contains(where:{story in story.answers.contains{$0.id==a.id}}){selectedReply=nil}
             if camp != nil, model.current == nil {camp=nil;campProgress=0}
         }
