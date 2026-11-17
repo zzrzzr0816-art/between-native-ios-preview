@@ -143,12 +143,12 @@ private struct Mascot: View {
     var body: some View {
         ZStack {
             if angel {
-                HStack(spacing: 42) { Ellipse(); Ellipse() }.fill(Color(red: 1, green: 0.992, blue: 0.973)).frame(width: 72, height: 25).offset(y: 7)
+                HStack(spacing: 42) { Ellipse(); Ellipse() }.foregroundColor(Color(red: 1, green: 0.992, blue: 0.973)).frame(width: 72, height: 25).offset(y: 7)
             } else {
                 HStack(spacing: 25) {
                     RoundedRectangle(cornerRadius: 9).rotationEffect(.degrees(-25))
                     RoundedRectangle(cornerRadius: 9).rotationEffect(.degrees(25))
-                }.fill(Color(red: 0.835, green: 0.431, blue: 0.404)).frame(width: 58, height: 22).offset(y: -25)
+                }.foregroundColor(Color(red: 0.835, green: 0.431, blue: 0.404)).frame(width: 58, height: 22).offset(y: -25)
             }
             Ellipse().fill(face).frame(width: 62, height: 60).shadow(color: ink.opacity(0.14), radius: 5, y: 4)
             HStack(spacing: 12) { Capsule().frame(width: 8, height: 2); Capsule().frame(width: 8, height: 2) }.foregroundColor(ink.opacity(0.68)).offset(y: -10)
