@@ -15,6 +15,7 @@ struct NativeStory: Codable, Identifiable {
     var detail: String? = nil
     let created: Double
     var answers: [NativeAnswer]
+    var aiPending: [String: Int]? = nil
 }
 struct NativeLocalState: Codable {
     var localStories: [NativeStory] = []
@@ -26,8 +27,9 @@ struct NativeLocalState: Codable {
     var updates: [String: [String]] = [:]
     var replies: [String: [NativeReply]] = [:]
     var myAnswers: [String: [NativeAnswer]] = [:]
+    var reviewed: [String]? = nil
 }
-struct NativeFeed: Decodable { let stories: [NativeStory] }
+struct NativeFeed: Decodable { let stories: [NativeStory]; let next_offset: Int? }
 enum NativeCamp: String {
     case devil, angel
     var accent: Color { Color(hex: self == .devil ? 0xc6786d : 0x628fa9) }
@@ -39,6 +41,8 @@ enum NativeCamp: String {
     @Published var loading = false
     @Published var error = false
     @Published var index = 0
+    @Published var nextOffset: Int? = nil
+    @Published var loadingMore = false
     private var revision = 0
     var current: NativeStory? { stories.indices.contains(index) ? stories[index] : nil }
     var preview: Bool {
@@ -61,9 +65,27 @@ enum NativeCamp: String {
             guard version == revision else { return }
             let previous = current?.id
             stories = result.stories.filter { $0.created/1000+86400 > Date().timeIntervalSince1970 }
+            nextOffset = result.next_offset
             index = previous.flatMap { id in stories.firstIndex { $0.id == id } } ?? 0
         } catch { if version == revision { self.error = true } }
         if version == revision { loading = false }
+    }
+    func loadNext(_ language: String) async {
+        guard !preview, let offset = nextOffset, !loadingMore, !loading else { return }
+        loadingMore = true
+        defer { loadingMore = false }
+        do {
+            var url = URLComponents(string: "https://minglimaster.com/between/api/stories")!
+            url.queryItems = [URLQueryItem(name:"language",value:language),URLQueryItem(name:"scope",value:"feed"),URLQueryItem(name:"offset",value:"\(offset)")]
+            let (data,response) = try await URLSession.shared.data(from:url.url!)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+            let result = try JSONDecoder().decode(NativeFeed.self,from:data)
+            nextOffset = result.next_offset
+            let now = Date().timeIntervalSince1970
+            for story in result.stories where story.created/1000+86400 > now && !stories.contains(where:{$0.id==story.id}) {
+                stories.append(story)
+            }
+        } catch { nextOffset = nil }
     }
     static func fixtures(_ language:String) -> [NativeStory] {
         let zh = language == "zh"
