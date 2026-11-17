@@ -48,7 +48,7 @@ struct ContentView: View {
     }
     func homeHeader(width:CGFloat,top:CGFloat)->some View {
         ZStack(alignment:.topLeading) {
-            HStack(spacing:0){Text("between").foregroundColor(Color(hex:0x42353f));Text(".").foregroundColor(Color(hex:0xe0776e))}.font(.system(size:23,weight:.heavy)).tracking(-1.5).frame(height:42).position(x:69,y:top+37)
+            (Text("between").foregroundColor(Color(hex:0x42353f))+Text(".").foregroundColor(Color(hex:0xe0776e))).font(.system(size:23,weight:.heavy)).tracking(-1.5).frame(height:42).position(x:69,y:top+37)
             HStack(spacing:7){
                 Button(zh ? "中文":"EN"){language=zh ? "en":"zh";Task{await model.load(language)}}.accessibilityLabel("Switch language")
                 Button {withAnimation(transitionAnimation){utility="more"}} label:{Image(systemName:"ellipsis").font(.system(size:17,weight:.bold))}.accessibilityLabel(l("更多","More"))
