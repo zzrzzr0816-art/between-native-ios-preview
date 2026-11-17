@@ -1,6 +1,5 @@
 name: Native iOS simulator build
 on:
-  push:
   workflow_dispatch:
 permissions:
   contents: read
