@@ -26,7 +26,6 @@ struct ContentView: View {
     @State var reportReason = "harassment"
     @State var toastText: String? = nil
     @AppStorage("native.motion") var motionOn = true
-    @State var notice: String? = nil
     @FocusState var composerFocused: Bool
     var zh: Bool { language == "zh" }
     func l(_ a:String,_ b:String)->String { zh ? a:b }
@@ -229,7 +228,7 @@ private struct CompanionPlacement:Equatable {
         if reply { devilX=11;angelX=width-11;y=height*0.46+29;scale=1 }
         else if sheet { devilX=width/2-20.1;angelX=width/2+20.1;y=top+22.4;scale=0.67 }
         else if profile { devilX=width-51.5;angelX=width-31.4;y=top+33.4;scale=0.53 }
-        else if write { devilX=width*0.16;angelX=width*0.84;y=height*0.12+9;scale=0.9 }
+        else if write { devilX=width/2;angelX=width/2;y=height*0.12+22;scale=0.9 }
         else { devilX=63;angelX=width-63;y=top+137;scale=1 }
     }
 }
