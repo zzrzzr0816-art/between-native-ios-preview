@@ -12,6 +12,7 @@ struct NativeAnswer: Decodable, Identifiable {
 struct NativeStory: Decodable, Identifiable {
     let id: String
     let text: String
+    var detail: String? = nil
     let created: Double
     var answers: [NativeAnswer]
 }

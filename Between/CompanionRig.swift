@@ -12,6 +12,7 @@ struct CompanionRig: View {
     var chinese: Bool
     var reaction: String
     var gesture: CGFloat
+    var settling: Bool = false
     var stageScale: CGFloat = 1
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var bridge = BuddyBridge()
@@ -27,7 +28,6 @@ struct CompanionRig: View {
     var body: some View {
         ZStack {
             BuddyWebView(angel: angel, leader: leader, gap: gap, motion: !reduceMotion, bridge: bridge)
-                .id("\(leader)-\(gap)-\(!reduceMotion)")
             Color.clear
                 .frame(width: 67, height: 67)
                 .contentShape(Rectangle())
@@ -61,13 +61,15 @@ struct CompanionRig: View {
         .onChange(of: gap) { _ in push() }
         .onChange(of: reaction) { _ in push() }
         .onChange(of: gesture) { _ in push() }
+        .onChange(of: settling) { _ in push() }
         .onChange(of: chinese) { _ in bridge.run("setLang(\(chinese))") }
         .onChange(of: reduceMotion) { _ in bridge.run("setMotion(\(!reduceMotion))") }
         .accessibilityLabel(angel ? "Angel companion" : "Devil companion")
     }
 
     private func push() {
-        bridge.run("setState('\(leader)','\(gap)','\(reaction)',\(Double(gesture)));setScale(\(Double(stageScale)))")
+        bridge.run("setState('\(leader)','\(gap)','\(reaction)',\(Double(gesture)),\(settling))")
+        bridge.run("setScale(\(Double(stageScale)))")
     }
 }
 
@@ -151,6 +153,10 @@ private enum BuddyHTML {
 
     private static let css = #"""
 *{box-sizing:border-box}
+@property --cheer{syntax:'<number>';inherits:true;initial-value:0}
+@property --reply{syntax:'<number>';inherits:true;initial-value:0}
+@property --gesture{syntax:'<number>';inherits:true;initial-value:0}
+.app.settling-gesture{transition:--gesture .34s cubic-bezier(.22,1,.36,1)}
 .buddy{position:relative;width:58px;height:58px;transform:translateY(calc(var(--bob) * -7px));transition:transform .3s cubic-bezier(.22,1,.36,1);animation:buddy-float 3.8s ease-in-out infinite}
 .buddy-angel{animation-delay:-1.8s}
 .buddy-face{position:absolute;inset:12px 7px 4px;background:#e99386;border-radius:47% 48% 45% 46%;box-shadow:inset 0 -4px 0 #d1766b40,0 5px 12px #a55f6326;display:flex;align-items:center;justify-content:center;gap:10px}
@@ -389,7 +395,7 @@ window.setScale = function (s) {
   document.querySelector('.companions').style.setProperty('--stage-scale', s);
 };
 window.setMotion = function (on) { document.documentElement.dataset.motion = on ? 'on' : 'off'; };
-window.setState = function (leader, gap, reaction, gesture) {
+window.setState = function (leader, gap, reaction, gesture, settling) {
   app.dataset.leader = leader;
   app.dataset.gap = gap;
   if (reaction) {
@@ -398,6 +404,11 @@ window.setState = function (leader, gap, reaction, gesture) {
   } else {
     delete app.dataset.reaction;
     app.style.setProperty('--gesture', 0);
+  }
+  if (settling) {
+    app.classList.add('settling-gesture');
+    clearTimeout(window.__settleTimer);
+    window.__settleTimer = setTimeout(() => app.classList.remove('settling-gesture'), 360);
   }
 };
 
