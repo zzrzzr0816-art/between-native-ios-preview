@@ -55,7 +55,16 @@ struct ContentView: View {
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:devilCount)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:angelCount)
         }.foregroundColor(H5Design.ink).tint(H5Design.ink).buttonStyle(.plain)
-            .task { await model.load(language); restoreLocal() }
+            .task { if ProcessInfo.processInfo.arguments.contains("-ui-zh"){language="zh"};await model.load(language);restoreLocal();applyPreviewRoute() }
+    }
+    func applyPreviewRoute(){
+        let args=ProcessInfo.processInfo.arguments
+        if args.contains("-ui-profile") {utility="profile"}
+        if args.contains("-ui-write") {utility="write"}
+        if args.contains("-ui-more") {utility="more"}
+        if args.contains("-ui-comments") {camp=.angel;campProgress=1}
+        if args.contains("-ui-reply") {camp=.angel;campProgress=1;selectedReply=model.current?.answers.first{$0.side=="angel"}}
+        if args.contains("-ui-detail") {detailStory=model.current}
     }
     func toast(_ text:String){
         withAnimation(reduceMotion || !motionOn ? nil:.easeOut(duration:0.2)){toastText=text}

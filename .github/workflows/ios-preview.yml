@@ -6,10 +6,10 @@ permissions:
 jobs:
   preview:
     runs-on: macos-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Build and capture simulator
+      - name: Build and capture every screen
         run: |
           set -euo pipefail
           xcodebuild -project Between.xcodeproj -target Between -configuration Debug -sdk iphonesimulator CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/between-build" CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/build.log" || { cat "$RUNNER_TEMP/build.log"; exit 1; }
@@ -18,11 +18,17 @@ jobs:
           xcrun simctl bootstatus "$DEVICE" -b
           xcrun simctl status_bar "$DEVICE" override --time "9:41" --dataNetwork wifi --wifiBars 3 --batteryState charged --batteryLevel 100
           xcrun simctl install "$DEVICE" "$RUNNER_TEMP/between-build/Between.app"
-          xcrun simctl launch "$DEVICE" com.example.between.preview -preview-fixture
-          sleep 12
-          xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/native-preview.png"
+          for screen in home profile write comments reply more detail; do
+            ARGS="-preview-fixture -ui-zh"
+            if [ "$screen" != "home" ]; then ARGS="$ARGS -ui-$screen"; fi
+            xcrun simctl launch "$DEVICE" com.example.between.preview $ARGS
+            sleep 9
+            xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/native-$screen.png"
+            xcrun simctl terminate "$DEVICE" com.example.between.preview || true
+            sleep 1
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: native-preview
-          path: ${{ runner.temp }}/native-preview.png
+          path: ${{ runner.temp }}/native-*.png
           retention-days: 1
