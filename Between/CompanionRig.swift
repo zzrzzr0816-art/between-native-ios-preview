@@ -241,6 +241,7 @@ html[data-motion=on] .app[data-leader=devil] .buddy-devil .horn{animation:horn-t
 html[data-motion=off] .buddy,html[data-motion=off] .buddy *,html[data-motion=off] .buddy::after{animation:none!important;transition:none!important}
 .companions .buddy{scale:var(--buddy-scale,1.15)}
 .app.peek-mode .buddy{clip-path:inset(0 -15px 43% -15px)}
+.app.peek-mode.peek-dragging .buddy{clip-path:none}
 .buddy{--cheer:0;--reply:0;transition:--cheer 1.1s ease,--reply 1.1s ease,transform .3s cubic-bezier(.22,1,.36,1),opacity .3s ease}
 .app[data-leader=devil] .buddy-devil,.app[data-leader=angel] .buddy-angel{--cheer:1}
 .app[data-leader=devil] .buddy-angel,.app[data-leader=angel] .buddy-devil{--reply:1}
@@ -429,6 +430,7 @@ window.buddyDown = function () {
   buddy.getAnimations().filter(a => a.id === 'buddy-body-tap' || a.id === 'buddy-release').forEach(a => a.cancel());
   drag = { x: 0, y: 0, moved: false, offsetX: 0, offsetY: 0 };
   buddy.dataset.grabbed = 'true';
+  app.classList.add('peek-dragging');
 };
 
 window.buddyMove = function (dx, dy) {
@@ -458,6 +460,7 @@ window.buddyUp = function () {
   if (!drag) return;
   const p = drag;
   drag = null;
+  app.classList.remove('peek-dragging');
   delete buddy.dataset.grabbed;
   delete buddy.dataset.pulled;
   const heldTransform = buddy.style.transform;
