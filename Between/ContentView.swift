@@ -53,9 +53,9 @@ struct ContentView: View {
             (Text("between").foregroundColor(Color(hex:0x42353f))+Text(".").foregroundColor(Color(hex:0xe0776e))).font(.system(size:23,weight:.heavy)).tracking(-1.5).frame(height:42).position(x:69,y:top+37)
             HStack(spacing:7){
                 Button(zh ? "中文":"EN"){language=zh ? "en":"zh";Task{await model.load(language)}}.accessibilityLabel("Switch language")
-                Button {withAnimation(transitionAnimation){utility="more"}} label:{Image(systemName:"ellipsis").font(.system(size:17,weight:.bold))}.accessibilityLabel(l("更多","More"))
+                Button {withAnimation(transitionAnimation){utility="more"}} label:{Text("•••")}.accessibilityLabel(l("更多","More"))
             }.font(.system(size:14)).buttonStyle(HeaderButtonStyle()).position(x:width-67.5,y:top+37)
-            Text(model.preview ? l("原生交互预览 · 测试内容","NATIVE INTERACTION PREVIEW · SAMPLE CONTENT"):l("体验版 · 讨论 24 小时后删除","TRIAL · Discussions expire after 24 hours")).font(.system(size:10)).foregroundColor(Color(hex:0x89757b)).frame(width:width).position(x:width/2,y:top+72.5)
+            Text(l("交互原型 · 内容仅保存在当前浏览器","PROTOTYPE · Data stays in this browser")).font(.system(size:10)).foregroundColor(Color(hex:0x89757b)).frame(width:width).position(x:width/2,y:top+72.5)
         }.opacity(1-Double(campProgress)).allowsHitTesting(campProgress<0.01)
     }
     func feed(width:CGFloat,area:CGFloat)->some View {
