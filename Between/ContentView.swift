@@ -231,6 +231,7 @@ struct ContentView: View {
     }
     func openWrite(){
         writePeek = Bool.random() ? .devil:.angel
+        replyText=""
         resetIdleHints()
         withAnimation(transitionAnimation){utility="write"}
     }

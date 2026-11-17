@@ -119,6 +119,8 @@ extension ContentView {
     }
     func writePage(width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
         let count = replyText.count
+        let sheetH = keyboardHeight > 0 ? (height-keyboardHeight)*0.88:height*0.88
+        let sheetBottom = keyboardHeight > 0 ? height-keyboardHeight:height
         return VStack(spacing:0){
             sheetHead(l("说说你的烦恼","What's on your mind?"),top:top,padBottom:66)
             VStack(alignment:.leading,spacing:0){
@@ -140,8 +142,8 @@ extension ContentView {
                 }.font(.system(size:12)).foregroundColor(Color(hex:0x8c7b72)).padding(12).frame(maxWidth:.infinity,alignment:.leading).background(Color(hex:0xf8f2ec),in:RoundedRectangle(cornerRadius:13)).padding(.top,14)
                 Spacer(minLength:12)
                 Button {publishStory()} label:{HStack(spacing:6){Text(l("匿名发布","Share anonymously"));Text("↗")}.font(.system(size:15,weight:.bold)).foregroundColor(.white).frame(maxWidth:.infinity,minHeight:48).background(Color(hex:0xc8786d),in:RoundedRectangle(cornerRadius:15))}.buttonStyle(PressScale())
-            }.padding(.horizontal,20).padding(.bottom,max(bottom+20,keyboardHeight+16))
-        }.frame(width:width,height:height*0.88,alignment:.top).background(Color(hex:0xfffbf9)).clipShape(TopRoundedShape(radius:26)).position(x:width/2,y:height-height*0.88/2)
+            }.padding(.horizontal,20).padding(.bottom,bottom+20)
+        }.frame(width:width,height:sheetH,alignment:.top).background(Color(hex:0xfffbf9)).clipShape(TopRoundedShape(radius:26)).position(x:width/2,y:sheetBottom-sheetH/2)
     }
     func publishStory(){
         let text=replyText.trimmingCharacters(in:.whitespacesAndNewlines)
