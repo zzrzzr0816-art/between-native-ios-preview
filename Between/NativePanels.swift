@@ -365,6 +365,7 @@ extension ContentView {
                 }.padding(.horizontal,18).padding(.bottom,bottom+20)
             }
         }.frame(width:width,height:height).background(Color(hex:0xfffbf9))
+            .animation(transitionAnimation,value:auth.userId)
             .alert(isPresented:$confirmDeleteAccount){
                 Alert(
                     title:Text(l("删除账号？","Delete account?")),

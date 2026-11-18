@@ -117,9 +117,9 @@ struct ContentView: View {
             .onReceive(Self.expiryTimer){ _ in pruneExpired() }
             .onReceive(NotificationCenter.default.publisher(for:UIResponder.keyboardWillChangeFrameNotification)){ note in
                 guard let frame=note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else{return}
-                keyboardHeight=max(0,UIScreen.main.bounds.height-frame.origin.y)
+                withAnimation(reduceMotion ? nil:.easeOut(duration:0.25)){keyboardHeight=max(0,UIScreen.main.bounds.height-frame.origin.y)}
             }
-            .onReceive(NotificationCenter.default.publisher(for:UIResponder.keyboardWillHideNotification)){ _ in keyboardHeight=0 }
+            .onReceive(NotificationCenter.default.publisher(for:UIResponder.keyboardWillHideNotification)){ _ in withAnimation(reduceMotion ? nil:.easeOut(duration:0.25)){keyboardHeight=0} }
     }
     func applyPreviewRoute(){
         let args=ProcessInfo.processInfo.arguments
@@ -133,7 +133,7 @@ struct ContentView: View {
     }
     func toast(_ text:String){
         withAnimation(reduceMotion || !motionOn ? nil:.easeOut(duration:0.2)){toastText=text}
-        DispatchQueue.main.asyncAfter(deadline:.now()+2.5){if toastText==text{withAnimation(nil){toastText=nil}}}
+        DispatchQueue.main.asyncAfter(deadline:.now()+2.5){if toastText==text{withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)){toastText=nil}}}
     }
     func toastView(_ text:String,bottom:CGFloat)->some View {
         Text(text).font(.system(size:12)).foregroundColor(.white).padding(.horizontal,18).padding(.vertical,11)
