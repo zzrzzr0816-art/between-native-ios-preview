@@ -14,11 +14,13 @@ enum H5Design {
     static let buddyBaseScale: CGFloat = 1.15
     static let buddyCampScale: CGFloat = 0.32
     static let settling = Animation.timingCurve(0.22, 1, 0.36, 1, duration: 0.34)
-    /// The warm devil tone and the cool angel tone split the screen by the
-    /// share of responses on each side: more angel replies, more angel color.
-    static func background(angelShare: CGFloat) -> some View {
-        SplitBackground(share: angelShare)
-    }
+    static let background = LinearGradient(stops: [
+        .init(color: Color(hex: 0xf5aaa7), location: 0),
+        .init(color: Color(hex: 0xf8d1c4), location: 0.32),
+        .init(color: Color(hex: 0xf6e5dc), location: 0.49),
+        .init(color: Color(hex: 0xdcebf2), location: 0.67),
+        .init(color: Color(hex: 0xb7d9eb), location: 1)
+    ], startPoint: UnitPoint(x: 0, y: 0.37), endPoint: UnitPoint(x: 1, y: 0.63))
     static let card = LinearGradient(colors: [Color(hex: 0xfffdf9).opacity(0.93), Color(hex: 0xfff8f4).opacity(0.78)], startPoint: .topLeading, endPoint: .bottomTrailing)
     static func titleSize(_ width: CGFloat) -> CGFloat { min(31, max(23, width * 0.065)) }
     static func titleHeight(_ text: String, width: CGFloat) -> CGFloat {
@@ -39,34 +41,6 @@ enum H5Design {
     static func verticalProgress(raw: CGFloat, travel: CGFloat) -> CGFloat { 1 - exp(-abs(raw) / (travel * 1.32)) }
     static func fade(_ value: CGFloat) -> CGFloat { let t = min(1, max(0, value)); return t * t * (3 - 2 * t) }
 }
-struct SplitBackground: View {
-    /// Angel fraction of the screen width, 0...1.
-    var share: CGFloat
-    var body: some View {
-        GeometryReader { geo in
-            let w = max(1, geo.size.width)
-            let h = geo.size.height
-            let angelShare = min(0.94, max(0.06, share))
-            let boundary = 1 - angelShare
-            ZStack {
-                LinearGradient(stops: [
-                    .init(color: Color(hex: 0xf5aaa7), location: 0),
-                    .init(color: Color(hex: 0xf8d1c4), location: 0.5),
-                    .init(color: Color(hex: 0xf6e5dc), location: 1)
-                ], startPoint: UnitPoint(x: 0, y: 0.3), endPoint: UnitPoint(x: 1, y: 0.7))
-                LinearGradient(colors: [Color(hex: 0xb7d9eb), Color(hex: 0xdcebf2), Color(hex: 0xeaf5f9)], startPoint: UnitPoint(x: 0, y: 0.66), endPoint: UnitPoint(x: 1, y: 0.34))
-                    .mask(
-                        LinearGradient(stops: [
-                            .init(color: .clear, location: max(0, boundary - 0.06)),
-                            .init(color: .black, location: min(1, boundary + 0.06)),
-                            .init(color: .black, location: 1)
-                        ], startPoint: .leading, endPoint: .trailing)
-                    )
-            }.frame(width: w, height: h)
-        }
-    }
-}
-
 extension Color {
     init(hex: UInt32) { self.init(red: Double((hex >> 16) & 255) / 255, green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255) }
 }

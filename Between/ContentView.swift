@@ -54,10 +54,6 @@ struct ContentView: View {
     var transitionAnimation: Animation? { (reduceMotion || !motionOn) ? nil:H5Design.settling }
     var devilCount:Int { model.current?.answers.filter { $0.side == "devil" }.count ?? 0 }
     var angelCount:Int { model.current?.answers.filter { $0.side == "angel" }.count ?? 0 }
-    var angelShare:CGFloat {
-        let total=devilCount+angelCount
-        return total == 0 ? 0.5:CGFloat(angelCount)/CGFloat(total)
-    }
     var myName:String { auth.account?.nickname ?? l("你 · 预览","You · preview") }
     var localKey:String { "native.local.v2." + (auth.account?.id ?? "guest") }
     func requireLogin(_ reason:String)->Bool {
@@ -69,7 +65,7 @@ struct ContentView: View {
             let top = proxy.safeAreaInsets.top, bottom = proxy.safeAreaInsets.bottom
             let w = proxy.size.width, h = proxy.size.height+top+bottom
             ZStack(alignment:.topLeading) {
-                H5Design.background(angelShare:angelShare).animation(reduceMotion ? nil:.easeInOut(duration:0.65),value:angelShare)
+                H5Design.background
                 homeHeader(width:w,top:top)
                 feed(width:w,area:h-265).frame(width:w,height:h-265).position(x:w/2,y:100+(h-265)/2)
                 idleHints(width:w,height:h,bottom:bottom)
