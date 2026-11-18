@@ -39,7 +39,7 @@ extension ContentView {
             })
     }
     func campTab(_ value:NativeCamp,chosen:NativeCamp,count:Int)->some View {
-        Button {composerFocused=false;withAnimation(reduceMotion ? nil:.easeInOut(duration:0.42)){camp=value}} label:{
+        Button {composerFocused=false;withAnimation(transitionAnimation){camp=value}} label:{
             HStack(spacing:7){
                 Circle().fill(Color(hex:value == .devil ? 0xc9827b:0x83adc3)).frame(width:7,height:7)
                 Text(value == .devil ? l("恶魔","Devil"):l("天使","Angel"))
@@ -105,7 +105,10 @@ extension ContentView {
     func closeComments(){
         composerFocused=false;settling=true
         withAnimation(transitionAnimation){campProgress=0}
-        DispatchQueue.main.asyncAfter(deadline:.now()+0.35){camp=nil;settling=false;axis=nil;resetIdleHints()}
+        DispatchQueue.main.asyncAfter(deadline:.now()+0.35){
+            camp=nil;axis=nil;resetIdleHints()
+            withAnimation(reduceMotion || !motionOn ? nil:.easeOut(duration:0.2)){settling=false}
+        }
     }
     func sendPreview(_ chosen:NativeCamp){
         let text=composer.trimmingCharacters(in:.whitespacesAndNewlines);guard !text.isEmpty else{return}

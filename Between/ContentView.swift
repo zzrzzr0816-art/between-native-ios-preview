@@ -251,20 +251,21 @@ struct ContentView: View {
     }
     func openDetail(_ story:NativeStory){
         if let i=model.stories.firstIndex(where:{$0.id==story.id}){model.index=i}
-        withAnimation(reduceMotion ? nil:.timingCurve(0.22,1,0.36,1,duration:0.38)){detailStory=story}
+        withAnimation(transitionAnimation){detailStory=story}
     }
     func companions(width:CGFloat,top:CGFloat,height:CGFloat)->some View {
         let reaction = camp == .devil ? "devil" : camp == .angel ? "angel" : ""
         let gesture = camp == nil ? 0 : campProgress
         let strong = abs(devilCount-angelCount) > 1
-        let place = CompanionPlacement(width:width,top:top,height:height,mode:companionMode)
+        let place = CompanionPlacement(width:width,top:top,height:height,mode:companionMode,panelProgress:campProgress)
         return ZStack(alignment:.topLeading){
             CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale,buddyScale:place.buddyScale).position(x:place.devilX,y:place.y).opacity(place.devilVisible ? 1:0)
             CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale,buddyScale:place.buddyScale).position(x:place.angelX,y:place.y).opacity(place.angelVisible ? 1:0)
         }.allowsHitTesting(!settling && campProgress == 0 && detailStory == nil && (utility == nil || utility == "write" || ["profile-stories","profile-answers","saved","activity"].contains(utility ?? "")))
             .opacity(keyboardHeight > 0 ? 0:1)
+            .opacity(settling && camp == nil ? 0:1)
             .animation(reduceMotion || !motionOn ? nil:.easeInOut(duration:0.25),value:keyboardHeight)
-            .animation(reduceMotion ? nil:.timingCurve(0.3,0.05,0.25,1,duration:0.68),value:place)
+            .animation(axis == 2 || camp != nil || selectedReply != nil || settling ? nil:transitionAnimation,value:place)
     }
     var companionMode:CompanionMode {
         if let c = camp { return selectedReply == nil ? .sheet(c) : .reply(c) }
@@ -278,6 +279,7 @@ struct ContentView: View {
         if selectedReply != nil { return 28 }
         if detailStory != nil { return 25 }
         if utility == "write" { return 9 }
+        if utility == "more" || utility == "report" || utility == "update" { return 4 }
         if utility != nil { return 11 }
         if camp != nil { return 12 }
         return 1
@@ -454,7 +456,7 @@ private struct CompanionPlacement:Equatable {
     var buddyScale:CGFloat = 1.15
     var devilVisible = true
     var angelVisible = true
-    init(width:CGFloat,top:CGFloat,height:CGFloat,mode:CompanionMode) {
+    init(width:CGFloat,top:CGFloat,height:CGFloat,mode:CompanionMode,panelProgress:CGFloat) {
         switch mode {
         case .home:
             angelX = width-63
@@ -465,6 +467,9 @@ private struct CompanionPlacement:Equatable {
             buddyScale = 1.15
             devilVisible = side == .devil
             angelVisible = side == .angel
+            let shift = -side.sign * width * (1-panelProgress)
+            devilX += shift
+            angelX += shift
         case .profile:
             scale = 0.6
             y = top+86
