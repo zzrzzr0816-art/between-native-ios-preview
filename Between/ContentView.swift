@@ -54,6 +54,10 @@ struct ContentView: View {
     var transitionAnimation: Animation? { (reduceMotion || !motionOn) ? nil:H5Design.settling }
     var devilCount:Int { model.current?.answers.filter { $0.side == "devil" }.count ?? 0 }
     var angelCount:Int { model.current?.answers.filter { $0.side == "angel" }.count ?? 0 }
+    var angelShare:CGFloat {
+        let total=devilCount+angelCount
+        return total == 0 ? 0.5:CGFloat(angelCount)/CGFloat(total)
+    }
     var myName:String { auth.account?.nickname ?? l("你 · 预览","You · preview") }
     var localKey:String { "native.local.v2." + (auth.account?.id ?? "guest") }
     func requireLogin(_ reason:String)->Bool {
@@ -65,7 +69,7 @@ struct ContentView: View {
             let top = proxy.safeAreaInsets.top, bottom = proxy.safeAreaInsets.bottom
             let w = proxy.size.width, h = proxy.size.height+top+bottom
             ZStack(alignment:.topLeading) {
-                H5Design.background
+                H5Design.background(angelShare:angelShare).animation(reduceMotion ? nil:.easeInOut(duration:0.65),value:angelShare)
                 homeHeader(width:w,top:top)
                 feed(width:w,area:h-265).frame(width:w,height:h-265).position(x:w/2,y:100+(h-265)/2)
                 idleHints(width:w,height:h,bottom:bottom)
@@ -177,8 +181,7 @@ struct ContentView: View {
                 Button(zh ? "中文":"EN"){language=zh ? "en":"zh";Task{await model.load(language);restoreLocal()}}.accessibilityLabel("Switch language")
                 Button {withAnimation(transitionAnimation){utility="more"}} label:{Text("•••")}.accessibilityLabel(l("更多","More"))
             }.font(.system(size:14)).buttonStyle(HeaderButtonStyle()).position(x:width-67.5,y:top+37)
-            Text(l("交互原型 · 内容仅保存在当前浏览器","PROTOTYPE · Data stays in this browser")).font(.system(size:10)).foregroundColor(Color(hex:0x89757b)).frame(width:width).position(x:width/2,y:top+72.5)
-        }.opacity(1-Double(campProgress)).allowsHitTesting(campProgress<0.01)
+        }.opacity((1-Double(campProgress)) * (utility == "write" ? 0:1)).allowsHitTesting(campProgress<0.01 && utility != "write")
     }
     func feed(width:CGFloat,area:CGFloat)->some View {
         ZStack {
@@ -460,15 +463,17 @@ private struct CompanionPlacement:Equatable {
         case .home:
             angelX = width-63
             y = top+137
-        case .sheet, .reply:
+        case .sheet(let side), .reply(let side):
             angelX = width-63
             y = top+137
             buddyScale = 1.15
+            devilVisible = side == .devil
+            angelVisible = side == .angel
         case .profile:
-            scale = 0.82
-            y = top+105
-            devilX = width/2-47
-            angelX = width/2+47
+            scale = 0.6
+            y = top+86
+            devilX = width/2-38
+            angelX = width/2+38
         case .library:
             scale = 0.53
             y = top+33.4
@@ -476,7 +481,7 @@ private struct CompanionPlacement:Equatable {
             angelX = width-31.4
         case .write(let side):
             buddyScale = 0.94
-            y = 107
+            y = max(top+34,height*0.12-16)
             devilX = 61
             angelX = width-61
             devilVisible = side == .devil

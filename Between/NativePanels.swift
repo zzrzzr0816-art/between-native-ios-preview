@@ -111,7 +111,6 @@ extension ContentView {
         let text=composer.trimmingCharacters(in:.whitespacesAndNewlines);guard !text.isEmpty else{return}
         guard requireLogin("respond") else{return}
         guard text.count<=1000 else{toast(l("最多输入 1000 字","Limit: 1,000 characters"));return}
-        guard model.preview else{toast(l("发布接口尚未接入，暂时无法提交。","Posting is not connected yet."));return}
         guard model.stories.indices.contains(model.index) else{return}
         model.stories[model.index].answers.append(NativeAnswer(id:UUID().uuidString,author:myName,side:chosen.rawValue,text:text,likes:0,replies:[]));composer="";composerFocused=false;persistLocal();toast(l("已发送","Sent"))
     }
@@ -144,7 +143,6 @@ extension ContentView {
                 HStack{
                     HStack(spacing:5){Text("✦");Text(l("匿名发布","Anonymous"))}.font(.system(size:12,weight:.bold)).foregroundColor(Color(hex:0xa8737a)).padding(.horizontal,11).padding(.vertical,6).background(Color(hex:0xf7e6e0),in:Capsule())
                     Spacer()
-                    Text("✳").font(.system(size:17)).foregroundColor(Color(hex:0xd9a89c))
                 }
                 TextEditor(text:$replyText).font(.system(size:16)).lineSpacing(4).padding(12).frame(minHeight:146,alignment:.topLeading).background(Color(hex:0xf7f1ee),in:RoundedRectangle(cornerRadius:17)).overlay(RoundedRectangle(cornerRadius:17).stroke(Color(hex:0xf0e7e2),lineWidth:1)).padding(.top,10)
                     .overlay(alignment:.topLeading){ if replyText.isEmpty { Text(l("最近有什么让你纠结的事？","What's been on your mind lately?")).font(.system(size:16)).foregroundColor(Color(hex:0xb3a5a0)).padding(.leading,17).padding(.top,22).allowsHitTesting(false) } }
@@ -343,23 +341,22 @@ extension ContentView {
                 Text(l("我的","Me")).font(.system(size:19,weight:.bold)).foregroundColor(Color(hex:0x302b32))
                 Spacer()
                 Button {withAnimation(transitionAnimation){utility=nil}} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x75666d)).frame(width:44,height:44)}.accessibilityLabel(l("关闭","Close"))
-            }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,86)
+            }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,58)
             ScrollView {
                 VStack(alignment:.leading,spacing:0){
-                    accountSection.padding(.top,14)
-                    VStack(alignment:.leading,spacing:8){
+                    accountSection.padding(.top,10)
+                    VStack(alignment:.leading,spacing:6){
                         Text(l("留给自己的一角","A LITTLE SPACE FOR YOU")).font(.system(size:10)).kerning(0.8).foregroundColor(Color(hex:0xbb8b82))
                         Text(l("你的小天地，都在这里。","Your little corner, all in one place.")).font(.system(size:15,weight:.semibold)).foregroundColor(Color(hex:0x6a5152))
-                    }.padding(24).frame(maxWidth:.infinity,alignment:.leading)
-                        .background(LinearGradient(stops:[.init(color:Color(hex:0xf9e5df),location:0),.init(color:Color(hex:0xf5eeea),location:0.55),.init(color:Color(hex:0xe6f1f3),location:1)],startPoint:.topLeading,endPoint:.bottomTrailing),in:RoundedRectangle(cornerRadius:21)).padding(.top,14)
+                    }.padding(20).frame(maxWidth:.infinity,alignment:.leading)
+                        .background(LinearGradient(stops:[.init(color:Color(hex:0xf9e5df),location:0),.init(color:Color(hex:0xf5eeea),location:0.55),.init(color:Color(hex:0xe6f1f3),location:1)],startPoint:.topLeading,endPoint:.bottomTrailing),in:RoundedRectangle(cornerRadius:21)).padding(.top,12)
                     LazyVGrid(columns:columns,spacing:10){
                         Button {openUtility("profile-stories")} label:{profileTile("✎",iconBG:0xfae7e2,iconColor:0xbe7770,label:l("我的烦恼","My stories"),count:model.stories.filter{$0.id.hasPrefix("local-")}.count)}
                         Button {openUtility("profile-answers")} label:{profileTile("✧",iconBG:0xe7f1f6,iconColor:0x789fb2,label:l("我的建议","My responses"),count:answers)}
                         Button {openUtility("saved")} label:{profileTile("♡",iconBG:0xfaeee6,iconColor:0xc58c78,label:l("收藏","Saved"),count:snapshots.count)}
                         Button {openUtility("activity")} label:{profileTile("◌",iconBG:0xefecf3,iconColor:0xa096b0,label:l("举报审核反馈","Report updates"),count:reports.isEmpty ? nil:reports.count)}
-                    }.padding(.top,15)
-                    Text(l("昵称全站唯一 · 不设头像 · 无法查看他人主页","Nicknames are unique · no avatars · profiles stay private")).font(.system(size:10)).foregroundColor(Color(hex:0xb8aaa5)).padding(.top,17).padding(.horizontal,2)
-                }.padding(.horizontal,20).padding(.bottom,bottom+20)
+                    }.padding(.top,12)
+                }.padding(.horizontal,18).padding(.bottom,bottom+20)
             }
         }.frame(width:width,height:height).background(Color(hex:0xfffbf9))
             .alert(isPresented:$confirmDeleteAccount){
@@ -396,18 +393,16 @@ extension ContentView {
                             Text(l("删除账号","Delete account")).font(.system(size:12)).foregroundColor(Color(hex:0xb85657)).padding(.horizontal,13).frame(height:36).background(Color(hex:0xfbecea),in:Capsule())
                         }.buttonStyle(PressScale())
                         Spacer(minLength:0)
-                    }.padding(.top,14)
-                    Text(l("昵称会显示在你的建议和回复上，他人无法打开你的主页。","Your nickname appears on your responses. Others cannot open your profile.")).font(.system(size:10)).foregroundColor(Color(hex:0xb0a29d)).padding(.top,11)
+                    }.padding(.top,12)
                     if let error=auth.errorText { Text(error).font(.system(size:11)).foregroundColor(Color(hex:0xb85657)).padding(.top,8) }
                 }.padding(18).frame(maxWidth:.infinity,alignment:.leading)
                     .background(.white,in:RoundedRectangle(cornerRadius:20)).overlay(RoundedRectangle(cornerRadius:20).stroke(Color(hex:0xf1e7e2),lineWidth:1))
             } else {
                 VStack(alignment:.leading,spacing:0){
                     Text(l("你正在以游客身份浏览","You’re browsing as a guest")).font(.system(size:18,weight:.bold)).foregroundColor(Color(hex:0x3a3038))
-                    Text(l("登录后可以发布烦恼、留下建议、点赞和收藏。昵称全站唯一，不设头像。","Sign in to share stories, respond, like and save. Nicknames are unique and there are no avatars.")).font(.system(size:12)).foregroundColor(Color(hex:0x8d7c7d)).lineSpacing(4).fixedSize(horizontal:false,vertical:true).padding(.top,8)
+                    Text(l("登录后可以发布、回复、点赞和收藏。","Sign in to share, respond, like and save.")).font(.system(size:12)).foregroundColor(Color(hex:0x8d7c7d)).lineSpacing(4).fixedSize(horizontal:false,vertical:true).padding(.top,8)
                     AppleSignInControl(auth:auth).padding(.top,15)
                     if let error=auth.errorText { Text(error).font(.system(size:11)).foregroundColor(Color(hex:0xb85657)).padding(.top,9) }
-                    Text(l("游客可以随时浏览，但无法参与互动。","Guests can read everything but cannot take part.")).font(.system(size:10)).foregroundColor(Color(hex:0xb0a29d)).padding(.top,10)
                 }.padding(18).frame(maxWidth:.infinity,alignment:.leading)
                     .background(.white,in:RoundedRectangle(cornerRadius:20)).overlay(RoundedRectangle(cornerRadius:20).stroke(Color(hex:0xf1e7e2),lineWidth:1))
             }
@@ -445,16 +440,16 @@ extension ContentView {
         }
     }
     func loginPromptCard(_ reason:String,width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
-        let title:String, body:String
+        let title:String
         switch reason {
-        case "publish": title=l("登录后就能发布烦恼","Sign in to share a story");body=l("你的昵称会出现在建议和回复上，全站唯一。","Your nickname appears on responses and is unique.")
-        case "respond", "reply": title=l("登录后就能加入讨论","Sign in to join the conversation");body=l("游客可以浏览，但发布建议和回复需要账号。","Guests can read; posting needs an account.")
-        case "like": title=l("登录后就能点赞","Sign in to like");body=l("点赞会记在你的账号下。","Likes are tied to your account.")
-        case "save": title=l("登录后就能收藏","Sign in to save");body=l("私密快照只对你自己可见。","Private snapshots are visible only to you.")
-        case "update": title=l("登录后就能补充进展","Sign in to add an update");body=l("进展会和这条烦恼一起消失。","Updates disappear with the story.")
-        case "best": title=l("登录后就能选出最佳建议","Sign in to choose a best response");body=l("只有你自己的烦恼可以选出最佳建议。","Only your own stories can mark a best response.")
-        case "report": title=l("登录后就能举报","Sign in to report");body=l("举报会提交给管理员处理。","Reports go to the moderators.")
-        default: title=l("登录后继续","Sign in to continue");body=l("游客可以浏览，互动需要账号。","Guests can read; taking part needs an account.")
+        case "publish": title=l("登录后就能发布烦恼","Sign in to share a story")
+        case "respond", "reply": title=l("登录后就能加入讨论","Sign in to join the conversation")
+        case "like": title=l("登录后就能点赞","Sign in to like")
+        case "save": title=l("登录后就能收藏","Sign in to save")
+        case "update": title=l("登录后就能补充进展","Sign in to add an update")
+        case "best": title=l("登录后就能选出最佳建议","Sign in to choose a best response")
+        case "report": title=l("登录后就能举报","Sign in to report")
+        default: title=l("登录后继续","Sign in to continue")
         }
         return ZStack(alignment:.bottom){
             Color(hex:0x302532).opacity(0.34).contentShape(Rectangle()).onTapGesture{withAnimation(transitionAnimation){loginPrompt=nil}}.transition(.opacity)
@@ -464,8 +459,7 @@ extension ContentView {
                     Spacer(minLength:0)
                     Button {withAnimation(transitionAnimation){loginPrompt=nil}} label:{Text("×").font(.system(size:24,weight:.light)).foregroundColor(Color(hex:0x8d7c7d)).frame(width:34,height:34)}.accessibilityLabel(l("关闭","Close"))
                 }
-                Text(body).font(.system(size:12)).foregroundColor(Color(hex:0x8d7c7d)).lineSpacing(4).fixedSize(horizontal:false,vertical:true).padding(.top,7)
-                AppleSignInControl(auth:auth).padding(.top,16)
+                AppleSignInControl(auth:auth).padding(.top,14)
                 if let error=auth.errorText { Text(error).font(.system(size:11)).foregroundColor(Color(hex:0xb85657)).padding(.top,9) }
                 Button {withAnimation(transitionAnimation){loginPrompt=nil}} label:{
                     Text(l("稍后再说","Not now")).font(.system(size:12)).foregroundColor(Color(hex:0xa29490)).frame(maxWidth:.infinity,minHeight:40)
@@ -485,7 +479,6 @@ extension ContentView {
                     Spacer(minLength:0)
                     Button {closeNicknameSheet()} label:{Text("×").font(.system(size:24,weight:.light)).foregroundColor(Color(hex:0x8d7c7d)).frame(width:34,height:34)}.accessibilityLabel(l("关闭","Close"))
                 }
-                Text(l("昵称全站唯一，且不设头像。不修改也可以，系统会给你一个随机昵称。","Nicknames are unique and there are no avatars. Keep the random one if you like.")).font(.system(size:12)).foregroundColor(Color(hex:0x8d7c7d)).lineSpacing(4).fixedSize(horizontal:false,vertical:true).padding(.top,7)
                 ZStack(alignment:.leading){
                     if nicknameDraft.isEmpty { Text(l("例如：晚风","e.g. Nightfall")).font(.system(size:16)).foregroundColor(Color(hex:0xb3a5a0)).padding(.leading,14).allowsHitTesting(false) }
                     TextField("",text:$nicknameDraft).font(.system(size:16)).foregroundColor(Color(hex:0x3a3038)).padding(.horizontal,14).frame(height:50)
@@ -501,7 +494,6 @@ extension ContentView {
                 Button {saveNickname()} label:{
                     HStack(spacing:6){Text(l("保存昵称","Save nickname"));Text("↗")}.font(.system(size:15,weight:.bold)).foregroundColor(.white).frame(maxWidth:.infinity,minHeight:48).background(Color(hex:0xc8786d),in:RoundedRectangle(cornerRadius:15)).opacity(auth.busy ? 0.6:1)
                 }.buttonStyle(PressScale()).disabled(auth.busy).padding(.top,16)
-                Text(l("不收集头像，也无法查看其他用户的主页。","No avatars, and other users’ profiles stay closed.")).font(.system(size:10)).foregroundColor(Color(hex:0xb0a29d)).padding(.top,14)
             }.padding(20).frame(width:width-36)
                 .background(Color(hex:0xfffbf9),in:RoundedRectangle(cornerRadius:22))
                 .shadow(color:Color(hex:0x45313a).opacity(0.18),radius:24,y:14)
@@ -522,7 +514,7 @@ extension ContentView {
                 Text(label).font(.system(size:13,weight:.bold)).foregroundColor(Color(hex:0x59484b))
                 if let count { Text("\(count)").font(.system(size:11,weight:.medium)).foregroundColor(Color(hex:0xb5a39e)) }
             }
-        }.padding(14).frame(maxWidth:.infinity,minHeight:132,alignment:.leading)
+        }.padding(13).frame(maxWidth:.infinity,minHeight:114,alignment:.leading)
             .background(.white,in:RoundedRectangle(cornerRadius:19)).overlay(RoundedRectangle(cornerRadius:19).stroke(Color(hex:0xf2e8e3),lineWidth:1))
             .overlay(Text("↗").font(.system(size:15)).foregroundColor(Color(hex:0xc5b5af)).padding(.top,15).padding(.trailing,15),alignment:.topTrailing)
     }
@@ -537,7 +529,7 @@ extension ContentView {
         }
         var items:[(String,String,NativeStory?,String?)] = []
         if page=="profile-answers" { for story in model.stories { for answer in story.answers where answer.author==me { items.append((answer.text,story.text,story,nil)) } } }
-        if page=="profile-stories" { for story in model.stories where story.id.hasPrefix("local-") { items.append((story.text,l("原生预览 · 仅本机","Native preview · this device only"),story,nil)) } }
+        if page=="profile-stories" { for story in model.stories where story.id.hasPrefix("local-") { items.append((story.text,l("24 小时后消失","Expires in 24 hours"),story,nil)) } }
         if page=="saved" { for story in snapshots { items.append((story.text,l("快照 · 只读","Snapshot · read only"),story,nil)) } }
         if page=="activity" {
             for raw in reports {
