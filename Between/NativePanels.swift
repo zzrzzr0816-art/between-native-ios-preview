@@ -72,6 +72,7 @@ extension ContentView {
             }
             HStack(spacing:8){
                 Button {
+                    guard requireLogin("like") else{return}
                     let next = !isLiked
                     liked[answer.id]=next;persistLocal()
                     if next {
@@ -84,7 +85,7 @@ extension ContentView {
                         .background(Color(hex:isLiked ? 0xf9e6e2:0xf8f4f2),in:Capsule())
                 }.buttonStyle(PressScale())
                 if mine {
-                    Button {if isBest {best["\(sid)|\(answer.side)"]=nil}else{best["\(sid)|\(answer.side)"]=answer.id};persistLocal()} label:{
+                    Button {guard requireLogin("best") else{return};if isBest {best["\(sid)|\(answer.side)"]=nil}else{best["\(sid)|\(answer.side)"]=answer.id};persistLocal()} label:{
                         Text(isBest ? "✦ "+l("取消最佳","Remove best"):l("选为最佳","Choose best")).font(.system(size:12))
                             .foregroundColor(Color(hex:0xa87336)).padding(.horizontal,8).frame(height:38)
                     }.buttonStyle(PressScale())
@@ -108,10 +109,11 @@ extension ContentView {
     }
     func sendPreview(_ chosen:NativeCamp){
         let text=composer.trimmingCharacters(in:.whitespacesAndNewlines);guard !text.isEmpty else{return}
+        guard requireLogin("respond") else{return}
         guard text.count<=1000 else{toast(l("最多输入 1000 字","Limit: 1,000 characters"));return}
-        guard model.preview else{toast(l("原生发布接口尚未接入审核，此预览暂不提交内容。","Posting and moderation are not connected in this native preview."));return}
+        guard model.preview else{toast(l("发布接口尚未接入，暂时无法提交。","Posting is not connected yet."));return}
         guard model.stories.indices.contains(model.index) else{return}
-        model.stories[model.index].answers.append(NativeAnswer(id:UUID().uuidString,author:l("你 · 预览","You · preview"),side:chosen.rawValue,text:text,likes:0,replies:[]));composer="";composerFocused=false;persistLocal();toast(l("已发送","Sent"))
+        model.stories[model.index].answers.append(NativeAnswer(id:UUID().uuidString,author:myName,side:chosen.rawValue,text:text,likes:0,replies:[]));composer="";composerFocused=false;persistLocal();toast(l("已发送","Sent"))
     }
 
     // MARK: - Utility sheets
@@ -163,6 +165,7 @@ extension ContentView {
     func publishStory(){
         let text=replyText.trimmingCharacters(in:.whitespacesAndNewlines)
         guard !text.isEmpty else{toast(l("请先写点内容","Write something first"));return}
+        guard requireLogin("publish") else{return}
         model.stories.insert(NativeStory(id:"local-\(UUID().uuidString)",text:text,created:Date().timeIntervalSince1970*1000,answers:[]),at:0)
         model.index=0;replyText="";persistLocal();withAnimation(transitionAnimation){utility=nil}
         toast(l("已发布","Story shared"))
@@ -187,7 +190,7 @@ extension ContentView {
         }).buttonStyle(PressScale())
     }
     func saveSnapshot(){
-        guard let story=model.current else{return}
+        guard let story=model.current,requireLogin("save") else{return}
         if !snapshots.contains(where:{$0.id==story.id}) { snapshots.append(story) }
         persistLocal()
         withAnimation(transitionAnimation){utility=nil}
@@ -235,6 +238,7 @@ extension ContentView {
         openUtility("report")
     }
     func confirmReport(){
+        guard requireLogin("report") else{return}
         let sid=model.current?.id ?? ""
         let raw=[sid,reportType,reportId,reportReason].joined(separator:"|")
         if !reports.contains(raw){reports.append(raw)}
@@ -260,7 +264,7 @@ extension ContentView {
     }
     func saveUpdate(){
         let text=replyText.trimmingCharacters(in:.whitespacesAndNewlines)
-        guard !text.isEmpty,let story=model.current else{return}
+        guard !text.isEmpty,requireLogin("update"),let story=model.current else{return}
         updates[story.id,default:[]].append(text)
         replyText="";persistLocal()
         withAnimation(transitionAnimation){utility=nil}
@@ -268,8 +272,9 @@ extension ContentView {
     }
     func appendReply(_ answer:NativeAnswer){
         let text=replyText.trimmingCharacters(in:.whitespacesAndNewlines)
-        guard !text.isEmpty,let sid=model.current?.id,let si=model.stories.firstIndex(where:{$0.id==sid}),let ai=model.stories[si].answers.firstIndex(where:{$0.id==answer.id}) else{return}
-        model.stories[si].answers[ai].replies.append(NativeReply(id:UUID().uuidString,author:l("你 · 预览","You · preview"),text:text))
+        guard !text.isEmpty,requireLogin("reply") else{return}
+        guard let sid=model.current?.id,let si=model.stories.firstIndex(where:{$0.id==sid}),let ai=model.stories[si].answers.firstIndex(where:{$0.id==answer.id}) else{return}
+        model.stories[si].answers[ai].replies.append(NativeReply(id:UUID().uuidString,author:myName,text:text))
         selectedReply=model.stories[si].answers[ai]
         replyText=""
         persistLocal()
@@ -330,7 +335,7 @@ extension ContentView {
 
     // MARK: - Profile
     func profilePage(width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
-        let me = l("你 · 预览","You · preview")
+        let me = myName
         let answers = model.stories.reduce(0) { $0 + $1.answers.filter { $0.author == me }.count }
         let columns = [GridItem(.flexible(),spacing:10),GridItem(.flexible(),spacing:10)]
         return VStack(spacing:0){
@@ -341,6 +346,7 @@ extension ContentView {
             }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,86)
             ScrollView {
                 VStack(alignment:.leading,spacing:0){
+                    accountSection.padding(.top,14)
                     VStack(alignment:.leading,spacing:8){
                         Text(l("留给自己的一角","A LITTLE SPACE FOR YOU")).font(.system(size:10)).kerning(0.8).foregroundColor(Color(hex:0xbb8b82))
                         Text(l("你的小天地，都在这里。","Your little corner, all in one place.")).font(.system(size:15,weight:.semibold)).foregroundColor(Color(hex:0x6a5152))
@@ -352,17 +358,166 @@ extension ContentView {
                         Button {openUtility("saved")} label:{profileTile("♡",iconBG:0xfaeee6,iconColor:0xc58c78,label:l("收藏","Saved"),count:snapshots.count)}
                         Button {openUtility("activity")} label:{profileTile("◌",iconBG:0xefecf3,iconColor:0xa096b0,label:l("举报审核反馈","Report updates"),count:reports.isEmpty ? nil:reports.count)}
                     }.padding(.top,15)
-                    HStack(spacing:10){
-                        Text("◈").font(.system(size:18)).foregroundColor(Color(hex:0xba9087))
-                        Text(l("审核界面演示","Moderation preview"))
-                        Spacer(minLength:0)
-                        Text("↗").foregroundColor(Color(hex:0xc7b2ab))
-                    }.font(.system(size:12)).foregroundColor(Color(hex:0x76635f)).padding(.horizontal,15).padding(.vertical,13)
-                        .background(.white,in:RoundedRectangle(cornerRadius:16)).overlay(RoundedRectangle(cornerRadius:16).stroke(Color(hex:0xf1e7e2),lineWidth:1)).padding(.top,14)
-                    Text(l("原型无账号、服务器或真实审核","Prototype: no account, server, or live moderation")).font(.system(size:10)).foregroundColor(Color(hex:0xb8aaa5)).padding(.top,17).padding(.horizontal,2)
+                    Text(l("昵称全站唯一 · 不设头像 · 无法查看他人主页","Nicknames are unique · no avatars · profiles stay private")).font(.system(size:10)).foregroundColor(Color(hex:0xb8aaa5)).padding(.top,17).padding(.horizontal,2)
                 }.padding(.horizontal,20).padding(.bottom,bottom+20)
             }
         }.frame(width:width,height:height).background(Color(hex:0xfffbf9))
+            .alert(isPresented:$confirmDeleteAccount){
+                Alert(
+                    title:Text(l("删除账号？","Delete account?")),
+                    message:Text(l("账号、昵称和你的内容都会被删除，且无法恢复。","Your account, nickname, and content will be deleted permanently.")),
+                    primaryButton:.destructive(Text(l("删除","Delete"))){deleteAccountAndData()},
+                    secondaryButton:.cancel(Text(l("取消","Cancel")))
+                )
+            }
+    }
+    var accountSection: some View {
+        Group {
+            if let account=auth.account, let nickname=account.nickname, !nickname.isEmpty {
+                VStack(alignment:.leading,spacing:0){
+                    HStack(alignment:.top,spacing:10){
+                        VStack(alignment:.leading,spacing:5){
+                            Text(nickname).font(.system(size:20,weight:.bold)).foregroundColor(Color(hex:0x3a3038))
+                            HStack(spacing:5){
+                                Text("ID").font(.system(size:9,weight:.bold)).foregroundColor(Color(hex:0xb08a83)).padding(.horizontal,5).padding(.vertical,2).background(Color(hex:0xf7ece8),in:Capsule())
+                                Text(account.id).font(.system(size:12,weight:.medium,design:.monospaced)).foregroundColor(Color(hex:0x8d7c7d))
+                            }
+                        }
+                        Spacer(minLength:0)
+                        Button {openNicknameEditor()} label:{
+                            Text(l("修改昵称","Edit")).font(.system(size:12)).foregroundColor(Color(hex:0x9a7d78)).padding(.horizontal,11).frame(height:32).background(Color(hex:0xf6efec),in:Capsule())
+                        }.buttonStyle(PressScale())
+                    }
+                    HStack(spacing:9){
+                        Button {auth.signOut();toast(l("已退出登录","Signed out"))} label:{
+                            Text(l("退出登录","Sign out")).font(.system(size:12)).foregroundColor(Color(hex:0x6d5f66)).padding(.horizontal,13).frame(height:36).background(Color(hex:0xf4efed),in:Capsule())
+                        }.buttonStyle(PressScale())
+                        Button {confirmDeleteAccount=true} label:{
+                            Text(l("删除账号","Delete account")).font(.system(size:12)).foregroundColor(Color(hex:0xb85657)).padding(.horizontal,13).frame(height:36).background(Color(hex:0xfbecea),in:Capsule())
+                        }.buttonStyle(PressScale())
+                        Spacer(minLength:0)
+                    }.padding(.top,14)
+                    Text(l("昵称会显示在你的建议和回复上，他人无法打开你的主页。","Your nickname appears on your responses. Others cannot open your profile.")).font(.system(size:10)).foregroundColor(Color(hex:0xb0a29d)).padding(.top,11)
+                    if let error=auth.errorText { Text(error).font(.system(size:11)).foregroundColor(Color(hex:0xb85657)).padding(.top,8) }
+                }.padding(18).frame(maxWidth:.infinity,alignment:.leading)
+                    .background(.white,in:RoundedRectangle(cornerRadius:20)).overlay(RoundedRectangle(cornerRadius:20).stroke(Color(hex:0xf1e7e2),lineWidth:1))
+            } else {
+                VStack(alignment:.leading,spacing:0){
+                    Text(l("你正在以游客身份浏览","You’re browsing as a guest")).font(.system(size:18,weight:.bold)).foregroundColor(Color(hex:0x3a3038))
+                    Text(l("登录后可以发布烦恼、留下建议、点赞和收藏。昵称全站唯一，不设头像。","Sign in to share stories, respond, like and save. Nicknames are unique and there are no avatars.")).font(.system(size:12)).foregroundColor(Color(hex:0x8d7c7d)).lineSpacing(4).fixedSize(horizontal:false,vertical:true).padding(.top,8)
+                    AppleSignInControl(auth:auth).padding(.top,15)
+                    if let error=auth.errorText { Text(error).font(.system(size:11)).foregroundColor(Color(hex:0xb85657)).padding(.top,9) }
+                    Text(l("游客可以随时浏览，但无法参与互动。","Guests can read everything but cannot take part.")).font(.system(size:10)).foregroundColor(Color(hex:0xb0a29d)).padding(.top,10)
+                }.padding(18).frame(maxWidth:.infinity,alignment:.leading)
+                    .background(.white,in:RoundedRectangle(cornerRadius:20)).overlay(RoundedRectangle(cornerRadius:20).stroke(Color(hex:0xf1e7e2),lineWidth:1))
+            }
+        }
+    }
+    func openNicknameEditor(){
+        nicknameDraft=auth.account?.nickname ?? ""
+        nicknameError=nil
+        withAnimation(transitionAnimation){nicknameMode=true}
+        DispatchQueue.main.asyncAfter(deadline:.now()+0.32){nicknameFocused=true}
+    }
+    func deleteAccountAndData(){
+        let key="native.local.v2."+(auth.account?.id ?? "guest")
+        Task {
+            if await auth.deleteAccount() {
+                UserDefaults.standard.removeObject(forKey:key)
+                reloadLocalForAccount()
+                withAnimation(transitionAnimation){utility=nil;nicknameMode=false}
+                toast(l("账号已删除","Account deleted"))
+            }
+        }
+    }
+    func saveNickname(){
+        let firstTime=auth.needsNickname
+        Task {
+            if let message=await auth.submitNickname(nicknameDraft) {
+                nicknameError=message
+            } else {
+                nicknameError=nil;nicknameFocused=false
+                if firstTime {reloadLocalForAccount()}
+                withAnimation(transitionAnimation){nicknameMode=false}
+            }
+        }
+    }
+    func loginPromptCard(_ reason:String,width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
+        let title:String, body:String
+        switch reason {
+        case "publish": title=l("登录后就能发布烦恼","Sign in to share a story");body=l("你的昵称会出现在建议和回复上，全站唯一。","Your nickname appears on responses and is unique.")
+        case "respond", "reply": title=l("登录后就能加入讨论","Sign in to join the conversation");body=l("游客可以浏览，但发布建议和回复需要账号。","Guests can read; posting needs an account.")
+        case "like": title=l("登录后就能点赞","Sign in to like");body=l("点赞会记在你的账号下。","Likes are tied to your account.")
+        case "save": title=l("登录后就能收藏","Sign in to save");body=l("私密快照只对你自己可见。","Private snapshots are visible only to you.")
+        case "update": title=l("登录后就能补充进展","Sign in to add an update");body=l("进展会和这条烦恼一起消失。","Updates disappear with the story.")
+        case "best": title=l("登录后就能选出最佳建议","Sign in to choose a best response");body=l("只有你自己的烦恼可以选出最佳建议。","Only your own stories can mark a best response.")
+        case "report": title=l("登录后就能举报","Sign in to report");body=l("举报会提交给管理员处理。","Reports go to the moderators.")
+        default: title=l("登录后继续","Sign in to continue");body=l("游客可以浏览，互动需要账号。","Guests can read; taking part needs an account.")
+        }
+        return ZStack(alignment:.bottom){
+            Color(hex:0x302532).opacity(0.34).contentShape(Rectangle()).onTapGesture{withAnimation(transitionAnimation){loginPrompt=nil}}.transition(.opacity)
+            VStack(alignment:.leading,spacing:0){
+                HStack{
+                    Text(title).font(.system(size:18,weight:.bold)).foregroundColor(Color(hex:0x302b32))
+                    Spacer(minLength:0)
+                    Button {withAnimation(transitionAnimation){loginPrompt=nil}} label:{Text("×").font(.system(size:24,weight:.light)).foregroundColor(Color(hex:0x8d7c7d)).frame(width:34,height:34)}.accessibilityLabel(l("关闭","Close"))
+                }
+                Text(body).font(.system(size:12)).foregroundColor(Color(hex:0x8d7c7d)).lineSpacing(4).fixedSize(horizontal:false,vertical:true).padding(.top,7)
+                AppleSignInControl(auth:auth).padding(.top,16)
+                if let error=auth.errorText { Text(error).font(.system(size:11)).foregroundColor(Color(hex:0xb85657)).padding(.top,9) }
+                Button {withAnimation(transitionAnimation){loginPrompt=nil}} label:{
+                    Text(l("稍后再说","Not now")).font(.system(size:12)).foregroundColor(Color(hex:0xa29490)).frame(maxWidth:.infinity,minHeight:40)
+                }.buttonStyle(PressScale()).padding(.top,6)
+            }.padding(20).frame(width:width-36)
+                .background(Color(hex:0xfffbf9),in:RoundedRectangle(cornerRadius:22))
+                .shadow(color:Color(hex:0x45313a).opacity(0.18),radius:24,y:14)
+                .padding(.bottom,max(bottom+22,keyboardHeight+22))
+        }.frame(width:width,height:height).transition(.opacity)
+    }
+    func nicknameSheet(width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
+        let required=auth.needsNickname
+        return ZStack(alignment:.bottom){
+            Color(hex:0x302532).opacity(0.34).contentShape(Rectangle()).onTapGesture{if !required{closeNicknameSheet()}}.transition(.opacity)
+            VStack(alignment:.leading,spacing:0){
+                HStack{
+                    Text(required ? l("给自己取一个昵称","Choose a nickname"):l("修改昵称","Edit nickname")).font(.system(size:18,weight:.bold)).foregroundColor(Color(hex:0x302b32))
+                    Spacer(minLength:0)
+                    if !required {
+                        Button {closeNicknameSheet()} label:{Text("×").font(.system(size:24,weight:.light)).foregroundColor(Color(hex:0x8d7c7d)).frame(width:34,height:34)}.accessibilityLabel(l("关闭","Close"))
+                    }
+                }
+                Text(required ? l("昵称会显示在你的建议和回复上，全站唯一。设置后不能与他人重复。","Your nickname appears on your responses and must be unique."):l("昵称全站唯一，且不设头像。","Nicknames are unique. There are no avatars.")).font(.system(size:12)).foregroundColor(Color(hex:0x8d7c7d)).lineSpacing(4).fixedSize(horizontal:false,vertical:true).padding(.top,7)
+                ZStack(alignment:.leading){
+                    if nicknameDraft.isEmpty { Text(l("例如：晚风","e.g. Nightfall")).font(.system(size:16)).foregroundColor(Color(hex:0xb3a5a0)).padding(.leading,14).allowsHitTesting(false) }
+                    TextField("",text:$nicknameDraft).font(.system(size:16)).foregroundColor(Color(hex:0x3a3038)).padding(.horizontal,14).frame(height:50)
+                        .disableAutocorrection(true)
+                        .focused($nicknameFocused)
+                        .onChange(of:nicknameDraft){ value in if value.count>16 {nicknameDraft=String(value.prefix(16))} }
+                }.background(Color(hex:0xf7f1ee),in:RoundedRectangle(cornerRadius:15)).overlay(RoundedRectangle(cornerRadius:15).stroke(Color(hex:0xeee4df),lineWidth:1)).padding(.top,16)
+                HStack{
+                    Text(nicknameError ?? l("2–16 个字符，支持中英文、数字、_ 和 -","2–16 characters: letters, numbers, _ or -")).font(.system(size:11)).foregroundColor(nicknameError==nil ? Color(hex:0xa29490):Color(hex:0xb85657)).lineSpacing(3)
+                    Spacer(minLength:0)
+                    Text("\(nicknameDraft.count)/16").font(.system(size:10)).foregroundColor(Color(hex:0xb0a29d))
+                }.padding(.top,9)
+                Button {saveNickname()} label:{
+                    HStack(spacing:6){Text(l("保存昵称","Save nickname"));Text("↗")}.font(.system(size:15,weight:.bold)).foregroundColor(.white).frame(maxWidth:.infinity,minHeight:48).background(Color(hex:0xc8786d),in:RoundedRectangle(cornerRadius:15)).opacity(auth.busy ? 0.6:1)
+                }.buttonStyle(PressScale()).disabled(auth.busy).padding(.top,16)
+                if required {
+                    Button {auth.signOut();nicknameMode=false;nicknameFocused=false} label:{
+                        Text(l("退出登录","Sign out")).font(.system(size:12)).foregroundColor(Color(hex:0xa29490)).frame(maxWidth:.infinity,minHeight:40)
+                    }.buttonStyle(PressScale()).padding(.top,6)
+                }
+                Text(l("不收集头像，也无法查看其他用户的主页。","No avatars, and other users’ profiles stay closed.")).font(.system(size:10)).foregroundColor(Color(hex:0xb0a29d)).padding(.top,14)
+            }.padding(20).frame(width:width-36)
+                .background(Color(hex:0xfffbf9),in:RoundedRectangle(cornerRadius:22))
+                .shadow(color:Color(hex:0x45313a).opacity(0.18),radius:24,y:14)
+                .padding(.bottom,max(bottom+22,keyboardHeight+22))
+        }.frame(width:width,height:height).transition(.opacity)
+    }
+    func closeNicknameSheet(){
+        nicknameFocused=false
+        nicknameError=nil
+        withAnimation(transitionAnimation){nicknameMode=false}
     }
     func openUtility(_ page:String){withAnimation(reduceMotion ? nil:.easeInOut(duration:0.32)){utility=page}}
     func profileTile(_ icon:String,iconBG:UInt32,iconColor:UInt32,label:String,count:Int?)->some View {
@@ -378,7 +533,7 @@ extension ContentView {
             .overlay(Text("↗").font(.system(size:15)).foregroundColor(Color(hex:0xc5b5af)).padding(.top,15).padding(.trailing,15),alignment:.topTrailing)
     }
     func libraryPage(_ page:String,width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
-        let me = l("你 · 预览","You · preview")
+        let me = myName
         let title:String, intro:String, empty:String
         switch page {
         case "profile-stories": title=l("我的烦恼","My stories");intro=l("写下的心事，会在这里停留 24 小时。","Your stories stay here for 24 hours.");empty=l("还没有发布过烦恼。","You haven’t shared a story yet.")

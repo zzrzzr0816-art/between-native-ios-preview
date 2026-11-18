@@ -4,6 +4,7 @@ import UIKit
 
 struct ContentView: View {
     @StateObject var model = NativeFeedModel()
+    @StateObject var auth = AuthManager()
     @AppStorage("native.language") var language = "en"
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @State var camp: NativeCamp? = nil
@@ -39,14 +40,26 @@ struct ContentView: View {
     @State var reportId = ""
     @State var snapshotStory: NativeStory? = nil
     @State var reviewed: [String] = []
+    @State var loginPrompt: String? = nil
+    @State var nicknameMode = false
+    @State var nicknameDraft = ""
+    @State var nicknameError: String? = nil
+    @State var confirmDeleteAccount = false
     private static let expiryTimer = Timer.publish(every:1,on:.main,in:.common).autoconnect()
     @AppStorage("native.motion") var motionOn = true
     @FocusState var composerFocused: Bool
+    @FocusState var nicknameFocused: Bool
     var zh: Bool { language == "zh" }
     func l(_ a:String,_ b:String)->String { zh ? a:b }
     var transitionAnimation: Animation? { (reduceMotion || !motionOn) ? nil:H5Design.settling }
     var devilCount:Int { model.current?.answers.filter { $0.side == "devil" }.count ?? 0 }
     var angelCount:Int { model.current?.answers.filter { $0.side == "angel" }.count ?? 0 }
+    var myName:String { auth.account?.nickname ?? l("你 · 预览","You · preview") }
+    var localKey:String { "native.local.v2." + (auth.account?.id ?? "guest") }
+    func requireLogin(_ reason:String)->Bool {
+        guard auth.isReady else { loginPrompt = reason; return false }
+        return true
+    }
     var body: some View {
         GeometryReader { proxy in
             let top = proxy.safeAreaInsets.top, bottom = proxy.safeAreaInsets.bottom
@@ -71,12 +84,21 @@ struct ContentView: View {
                 if detailStory != nil && camp == nil && utility == nil { detailHandles(width:w,height:h).zIndex(26) }
                 if let story = snapshotStory { snapshotPage(story,width:w,height:h,top:top,bottom:bottom).zIndex(22).transition(.opacity) }
                 if guideVisible { guideCard(width:w,bottom:bottom).zIndex(29) }
-                if let text = toastText { toastView(text,bottom:bottom).zIndex(30) }
+                if let reason = loginPrompt { loginPromptCard(reason,width:w,height:h,top:top,bottom:bottom).zIndex(31) }
+                if auth.needsNickname || nicknameMode { nicknameSheet(width:w,height:h,top:top,bottom:bottom).zIndex(32) }
+                if let text = toastText { toastView(text,bottom:bottom).zIndex(33) }
             }.frame(width:w,height:h).clipped().offset(y:-top)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:devilCount)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:angelCount)
         }.foregroundColor(H5Design.ink).tint(H5Design.ink).buttonStyle(.plain)
-            .task { if ProcessInfo.processInfo.arguments.contains("-ui-zh"){language="zh"};await model.load(language);restoreLocal();applyPreviewRoute();resetIdleHints();scheduleGuide() }
+            .task { if ProcessInfo.processInfo.arguments.contains("-ui-zh"){language="zh"};await auth.bootstrap();await model.load(language);restoreLocal();applyPreviewRoute();resetIdleHints();scheduleGuide() }
+            .onChange(of: auth.userId){ _ in
+                reloadLocalForAccount()
+                if auth.account != nil {withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)){loginPrompt=nil}}
+                nicknameDraft=auth.account?.nickname ?? ""
+                nicknameError=nil
+                if auth.account != nil {DispatchQueue.main.asyncAfter(deadline:.now()+0.45){if auth.needsNickname{nicknameFocused=true}}}
+            }
             .onReceive(Self.expiryTimer){ _ in pruneExpired() }
             .onReceive(NotificationCenter.default.publisher(for:UIResponder.keyboardWillChangeFrameNotification)){ note in
                 guard let frame=note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else{return}
@@ -103,8 +125,16 @@ struct ContentView: View {
             .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.bottom).padding(.bottom,120+bottom).allowsHitTesting(false)
             .transition(.opacity)
     }
+    func reloadLocalForAccount(){
+        snapshots=[];reports=[];hidden=[];liked=[:];best=[:];updates=[:];reviewed=[]
+        model.stories.removeAll{$0.id.hasPrefix("local-")}
+        restoreLocal()
+        withAnimation(nil){if model.index >= model.stories.count {model.index = max(0,model.stories.count-1)}}
+    }
     func restoreLocal(){
-        guard let data=UserDefaults.standard.data(forKey:"native.local.v1"),let state=try? JSONDecoder().decode(NativeLocalState.self,from:data) else{return}
+        let store = UserDefaults.standard
+        let data = store.data(forKey:localKey) ?? (auth.account == nil ? store.data(forKey:"native.local.v1"):nil)
+        guard let data=data,let state=try? JSONDecoder().decode(NativeLocalState.self,from:data) else{return}
         snapshots=state.snapshots;reports=state.reports;hidden=state.hidden;liked=state.liked;best=state.best;updates=state.updates;reviewed=state.reviewed ?? []
         let local=state.localStories.filter{!hidden.contains($0.id) && $0.created/1000+86400 > Date().timeIntervalSince1970}
         if !local.isEmpty { model.stories.insert(contentsOf:local,at:0) }
@@ -119,12 +149,12 @@ struct ContentView: View {
         var state=NativeLocalState()
         state.localStories=model.stories.filter{$0.id.hasPrefix("local-")}
         state.snapshots=snapshots;state.reports=reports;state.hidden=hidden;state.liked=liked;state.best=best;state.updates=updates
-        state.myAnswers=Dictionary(uniqueKeysWithValues:model.stories.map{($0.id,$0.answers.filter{$0.author==l("你 · 预览","You · preview")})}.filter{!$0.1.isEmpty})
+        state.myAnswers=Dictionary(uniqueKeysWithValues:model.stories.map{($0.id,$0.answers.filter{$0.author==myName})}.filter{!$0.1.isEmpty})
         state.reviewed=reviewed
         var reps:[String:[NativeReply]]=[:]
-        for story in model.stories { for a in story.answers where a.author==l("你 · 预览","You · preview") || !a.replies.isEmpty { reps[a.id]=a.replies } }
+        for story in model.stories { for a in story.answers where a.author==myName || !a.replies.isEmpty { reps[a.id]=a.replies } }
         state.replies=reps.filter{!$0.value.isEmpty}
-        if let data=try? JSONEncoder().encode(state){UserDefaults.standard.set(data,forKey:"native.local.v1")}
+        if let data=try? JSONEncoder().encode(state){UserDefaults.standard.set(data,forKey:localKey)}
     }
     func homeHeader(width:CGFloat,top:CGFloat)->some View {
         ZStack(alignment:.topLeading) {
