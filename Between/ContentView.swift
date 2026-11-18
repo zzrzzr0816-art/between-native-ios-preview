@@ -52,6 +52,13 @@ struct ContentView: View {
     var zh: Bool { language == "zh" }
     func l(_ a:String,_ b:String)->String { zh ? a:b }
     var transitionAnimation: Animation? { (reduceMotion || !motionOn) ? nil:H5Design.settling }
+    var pageBlurEnabled:Bool { !reduceMotion && motionOn }
+    var homeBlur:CGFloat { pageBlurEnabled ? 8*campProgress:0 }
+    var panelBlur:CGFloat { pageBlurEnabled ? 7*(1-campProgress):0 }
+    var homeShift:CGFloat {
+        guard let chosen = camp else { return 0 }
+        return -chosen.sign*26*campProgress
+    }
     var devilCount:Int { model.current?.answers.filter { $0.side == "devil" }.count ?? 0 }
     var angelCount:Int { model.current?.answers.filter { $0.side == "angel" }.count ?? 0 }
     var myName:String { auth.account?.nickname ?? l("你 · 预览","You · preview") }
@@ -66,13 +73,15 @@ struct ContentView: View {
             let w = proxy.size.width, h = proxy.size.height+top+bottom
             ZStack(alignment:.topLeading) {
                 H5Design.background
-                homeHeader(width:w,top:top)
+                ZStack(alignment:.topLeading){
+                    homeHeader(width:w,top:top)
                 feed(width:w,area:h-265).frame(width:w,height:h-265).position(x:w/2,y:100+(h-265)/2)
                 idleHints(width:w,height:h,bottom:bottom)
                 bottomNav(width:w,height:h,bottom:bottom)
+                }.frame(width:w,height:h).blur(radius:homeBlur).scaleEffect(1-0.03*campProgress).offset(x:homeShift)
                 if let chosen = camp {
-                    Color.black.opacity(0.12*Double(campProgress)).allowsHitTesting(false).zIndex(detailStory != nil ? 22.5:0.5)
-                    comments(chosen,width:w,height:h,top:top,bottom:bottom).offset(x:-chosen.sign*w*(1-campProgress)).allowsHitTesting((campProgress>0.99 || axis==2) && !settling).zIndex(detailStory != nil ? 23:2)
+                    Color.black.opacity(0.14*Double(campProgress)).allowsHitTesting(false).zIndex(detailStory != nil ? 22.5:0.5)
+                    comments(chosen,width:w,height:h,top:top,bottom:bottom).blur(radius:panelBlur).offset(x:-chosen.sign*w*(1-campProgress)).allowsHitTesting((campProgress>0.99 || axis==2) && !settling).zIndex(detailStory != nil ? 23:2)
                 }
                 companions(width:w,top:top,height:h).zIndex(companionsLayer)
                 if let page = utility, page == "write" || page == "more" {
