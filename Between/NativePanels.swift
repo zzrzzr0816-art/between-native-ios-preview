@@ -344,12 +344,7 @@ extension ContentView {
             }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,58)
             ScrollView {
                 VStack(alignment:.leading,spacing:0){
-                    accountSection.padding(.top,10)
-                    VStack(alignment:.leading,spacing:6){
-                        Text(l("留给自己的一角","A LITTLE SPACE FOR YOU")).font(.system(size:10)).kerning(0.8).foregroundColor(Color(hex:0xbb8b82))
-                        Text(l("你的小天地，都在这里。","Your little corner, all in one place.")).font(.system(size:15,weight:.semibold)).foregroundColor(Color(hex:0x6a5152))
-                    }.padding(20).frame(maxWidth:.infinity,alignment:.leading)
-                        .background(LinearGradient(stops:[.init(color:Color(hex:0xf9e5df),location:0),.init(color:Color(hex:0xf5eeea),location:0.55),.init(color:Color(hex:0xe6f1f3),location:1)],startPoint:.topLeading,endPoint:.bottomTrailing),in:RoundedRectangle(cornerRadius:21)).padding(.top,12)
+                    accountSection.padding(.top,8)
                     LazyVGrid(columns:columns,spacing:10){
                         Button {openUtility("profile-stories")} label:{profileTile("✎",iconBG:0xfae7e2,iconColor:0xbe7770,label:l("我的烦恼","My stories"),count:model.stories.filter{$0.id.hasPrefix("local-")}.count)}
                         Button {openUtility("profile-answers")} label:{profileTile("✧",iconBG:0xe7f1f6,iconColor:0x789fb2,label:l("我的建议","My responses"),count:answers)}
