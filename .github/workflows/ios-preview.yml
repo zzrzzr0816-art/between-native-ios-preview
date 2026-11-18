@@ -18,11 +18,15 @@ jobs:
           xcrun simctl bootstatus "$DEVICE" -b
           xcrun simctl status_bar "$DEVICE" override --time "9:41" --dataNetwork wifi --wifiBars 3 --batteryState charged --batteryLevel 100
           xcrun simctl install "$DEVICE" "$RUNNER_TEMP/between-build/Between.app"
-          for screen in home profile write comments reply more detail; do
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.example.between.preview -preview-fixture -ui-zh || true
+          sleep 20
+          xcrun simctl terminate "$DEVICE" com.example.between.preview || true
+          sleep 2
+          for screen in profile write comments reply more detail home; do
             ARGS="-preview-fixture -ui-zh"
             if [ "$screen" != "home" ]; then ARGS="$ARGS -ui-$screen"; fi
             xcrun simctl launch --terminate-running-process "$DEVICE" com.example.between.preview $ARGS || true
-            sleep 14
+            sleep 16
             xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/native-$screen.png"
             xcrun simctl spawn "$DEVICE" launchctl list | grep -i between > "$RUNNER_TEMP/state-$screen.txt" || true
             xcrun simctl spawn "$DEVICE" log show --last 40s --predicate 'process == "Between"' --style compact > "$RUNNER_TEMP/log-$screen.txt" 2>&1 || true

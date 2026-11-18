@@ -415,17 +415,15 @@ private struct CompanionPlacement:Equatable {
         case .home:
             angelX = width-63
             y = top+137
-        case .sheet(let side), .reply(let side):
+        case .sheet, .reply:
             angelX = width-63
             y = top+137
-            buddyScale = 1.47
-            devilVisible = side == .devil
-            angelVisible = side == .angel
+            buddyScale = 1.15
         case .profile:
             scale = 0.82
-            y = top+99.8
-            devilX = width/2-38.5
-            angelX = width/2+38.5
+            y = top+105
+            devilX = width/2-47
+            angelX = width/2+47
         case .library:
             scale = 0.53
             y = top+33.4
@@ -433,8 +431,9 @@ private struct CompanionPlacement:Equatable {
             angelX = width-31.4
         case .write(let side):
             buddyScale = 0.94
-            y = top+137
-            angelX = width-63
+            y = 107
+            devilX = 61
+            angelX = width-61
             devilVisible = side == .devil
             angelVisible = side == .angel
         case .detail:
