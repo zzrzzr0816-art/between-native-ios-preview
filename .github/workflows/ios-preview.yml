@@ -22,7 +22,7 @@ jobs:
           sleep 20
           xcrun simctl terminate "$DEVICE" com.example.between.preview || true
           sleep 4
-          for screen in comments write reply more detail profile home; do
+          for screen in comments drag write reply more detail profile home; do
             ARGS="-preview-fixture -ui-zh"
             if [ "$screen" != "home" ]; then ARGS="$ARGS -ui-$screen"; fi
             xcrun simctl launch --terminate-running-process "$DEVICE" com.example.between.preview $ARGS || true

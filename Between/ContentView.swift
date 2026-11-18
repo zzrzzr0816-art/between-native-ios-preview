@@ -120,6 +120,7 @@ struct ContentView: View {
         if args.contains("-ui-write") {utility = "write"}
         if args.contains("-ui-more") {utility = "more"}
         if args.contains("-ui-comments") {camp = .angel; campProgress = 1}
+        if args.contains("-ui-drag") {camp = .angel; campProgress = 0.55}
         if args.contains("-ui-reply") {camp = .angel; campProgress = 1; selectedReply = model.current?.answers.first{$0.side=="angel"}}
         if args.contains("-ui-detail") {detailStory = model.current}
     }
