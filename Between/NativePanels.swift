@@ -431,13 +431,15 @@ extension ContentView {
         }
     }
     func saveNickname(){
-        let firstTime=auth.needsNickname
+        let oldName=auth.account?.nickname
         Task {
             if let message=await auth.submitNickname(nicknameDraft) {
                 nicknameError=message
             } else {
                 nicknameError=nil;nicknameFocused=false
-                if firstTime {reloadLocalForAccount()}
+                if let oldName, let newName=auth.account?.nickname, oldName != newName {
+                    renameLocalAuthor(from:oldName,to:newName)
+                }
                 withAnimation(transitionAnimation){nicknameMode=false}
             }
         }
@@ -475,18 +477,15 @@ extension ContentView {
         }.frame(width:width,height:height).transition(.opacity)
     }
     func nicknameSheet(width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
-        let required=auth.needsNickname
-        return ZStack(alignment:.bottom){
-            Color(hex:0x302532).opacity(0.34).contentShape(Rectangle()).onTapGesture{if !required{closeNicknameSheet()}}.transition(.opacity)
+        ZStack(alignment:.bottom){
+            Color(hex:0x302532).opacity(0.34).contentShape(Rectangle()).onTapGesture{closeNicknameSheet()}.transition(.opacity)
             VStack(alignment:.leading,spacing:0){
                 HStack{
-                    Text(required ? l("给自己取一个昵称","Choose a nickname"):l("修改昵称","Edit nickname")).font(.system(size:18,weight:.bold)).foregroundColor(Color(hex:0x302b32))
+                    Text(l("修改昵称","Edit nickname")).font(.system(size:18,weight:.bold)).foregroundColor(Color(hex:0x302b32))
                     Spacer(minLength:0)
-                    if !required {
-                        Button {closeNicknameSheet()} label:{Text("×").font(.system(size:24,weight:.light)).foregroundColor(Color(hex:0x8d7c7d)).frame(width:34,height:34)}.accessibilityLabel(l("关闭","Close"))
-                    }
+                    Button {closeNicknameSheet()} label:{Text("×").font(.system(size:24,weight:.light)).foregroundColor(Color(hex:0x8d7c7d)).frame(width:34,height:34)}.accessibilityLabel(l("关闭","Close"))
                 }
-                Text(required ? l("昵称会显示在你的建议和回复上，全站唯一。设置后不能与他人重复。","Your nickname appears on your responses and must be unique."):l("昵称全站唯一，且不设头像。","Nicknames are unique. There are no avatars.")).font(.system(size:12)).foregroundColor(Color(hex:0x8d7c7d)).lineSpacing(4).fixedSize(horizontal:false,vertical:true).padding(.top,7)
+                Text(l("昵称全站唯一，且不设头像。不修改也可以，系统会给你一个随机昵称。","Nicknames are unique and there are no avatars. Keep the random one if you like.")).font(.system(size:12)).foregroundColor(Color(hex:0x8d7c7d)).lineSpacing(4).fixedSize(horizontal:false,vertical:true).padding(.top,7)
                 ZStack(alignment:.leading){
                     if nicknameDraft.isEmpty { Text(l("例如：晚风","e.g. Nightfall")).font(.system(size:16)).foregroundColor(Color(hex:0xb3a5a0)).padding(.leading,14).allowsHitTesting(false) }
                     TextField("",text:$nicknameDraft).font(.system(size:16)).foregroundColor(Color(hex:0x3a3038)).padding(.horizontal,14).frame(height:50)
@@ -502,11 +501,6 @@ extension ContentView {
                 Button {saveNickname()} label:{
                     HStack(spacing:6){Text(l("保存昵称","Save nickname"));Text("↗")}.font(.system(size:15,weight:.bold)).foregroundColor(.white).frame(maxWidth:.infinity,minHeight:48).background(Color(hex:0xc8786d),in:RoundedRectangle(cornerRadius:15)).opacity(auth.busy ? 0.6:1)
                 }.buttonStyle(PressScale()).disabled(auth.busy).padding(.top,16)
-                if required {
-                    Button {auth.signOut();nicknameMode=false;nicknameFocused=false} label:{
-                        Text(l("退出登录","Sign out")).font(.system(size:12)).foregroundColor(Color(hex:0xa29490)).frame(maxWidth:.infinity,minHeight:40)
-                    }.buttonStyle(PressScale()).padding(.top,6)
-                }
                 Text(l("不收集头像，也无法查看其他用户的主页。","No avatars, and other users’ profiles stay closed.")).font(.system(size:10)).foregroundColor(Color(hex:0xb0a29d)).padding(.top,14)
             }.padding(20).frame(width:width-36)
                 .background(Color(hex:0xfffbf9),in:RoundedRectangle(cornerRadius:22))

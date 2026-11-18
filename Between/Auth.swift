@@ -10,7 +10,9 @@ import AuthenticationServices
 //
 // POST /auth/apple
 //   { "identity_token": "...", "authorization_code": "..." }
-//   200 { "token": "...", "user": { "id": "A7K2M9", "nickname": null }, "needs_nickname": true }
+//   200 { "token": "...", "user": { "id": "A7K2M9", "nickname": "晚风4821" } }
+//   Server assigns a random unique nickname on registration. If it returns null,
+//   the client generates one and PATCHes it, so setup is never blocking.
 //
 // GET /me                       Authorization: Bearer <token>
 //   -> { "user": { "id": "A7K2M9", "nickname": "晚风" } }
@@ -41,7 +43,6 @@ struct AuthUserPayload: Decodable {
 struct AuthResponse: Decodable {
     let token: String
     let user: AuthUserPayload
-    let needs_nickname: Bool?
 }
 
 private struct AuthUserEnvelope: Decodable { let user: AuthUserPayload }
@@ -49,6 +50,13 @@ private struct AuthUserEnvelope: Decodable { let user: AuthUserPayload }
 enum NicknameRule {
     static func normalize(_ raw: String) -> String {
         raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func random(zh: Bool) -> String {
+        let zhWords = ["晚风", "微光", "旅人", "小岛", "回声", "月亮", "纸船", "星尘"]
+        let enWords = ["Drift", "Echo", "Lantern", "Harbor", "Moth", "Dawn", "Pebble", "Comet"]
+        let word = (zh ? zhWords : enWords).randomElement() ?? "Drift"
+        return word + String(format: "%04d", Int.random(in: 1000...9999))
     }
 
     static func validate(_ raw: String, zh: Bool) -> String? {
@@ -110,7 +118,6 @@ private enum KeychainStore {
 @MainActor
 final class AuthManager: ObservableObject {
     @Published private(set) var account: BetweenAccount?
-    @Published var needsNickname = false
     @Published var busy = false
     @Published var errorText: String?
 
@@ -126,7 +133,7 @@ final class AuthManager: ObservableObject {
     }
 
     var isGuest: Bool { account == nil }
-    var isReady: Bool { account != nil && !needsNickname }
+    var isReady: Bool { account != nil }
     var displayName: String { account?.nickname ?? "" }
     var userId: String? { account?.id }
 
@@ -138,19 +145,13 @@ final class AuthManager: ObservableObject {
     init() {
         if isPreview {
             let args = ProcessInfo.processInfo.arguments
-            if args.contains("-ui-guest") {
-                account = nil
-            } else if args.contains("-ui-nickname") {
-                account = BetweenAccount(id: "A7K2M9", nickname: nil)
-                needsNickname = true
-            } else {
-                account = BetweenAccount(id: "A7K2M9", nickname: zh ? "晚风" : "Nightfall")
-            }
+            account = args.contains("-ui-guest") ? nil : BetweenAccount(id: "A7K2M9", nickname: zh ? "晚风" : "Nightfall")
             return
         }
-        if let cached = loadCachedAccount() {
-            account = cached
-            needsNickname = (cached.nickname?.isEmpty ?? true)
+        if KeychainStore.get(tokenKey) != nil, let cached = loadCachedAccount() {
+            var restored = cached
+            if restored.nickname?.isEmpty ?? true { restored.nickname = NicknameRule.random(zh: zh) }
+            account = restored
         }
     }
 
@@ -160,7 +161,7 @@ final class AuthManager: ObservableObject {
         guard !isPreview, let token = KeychainStore.get(tokenKey), account != nil else { return }
         do {
             let fresh = try await fetchMe(token)
-            persist(fresh)
+            await applyAccount(fresh, token: token)
         } catch AuthFailure.unauthorized {
             clearSession()
         } catch {
@@ -192,8 +193,7 @@ final class AuthManager: ObservableObject {
         errorText = nil
         defer { busy = false }
         if isPreview {
-            account = BetweenAccount(id: "A7K2M9", nickname: nil)
-            needsNickname = true
+            account = BetweenAccount(id: "A7K2M9", nickname: NicknameRule.random(zh: zh))
             return
         }
         do {
@@ -207,8 +207,7 @@ final class AuthManager: ObservableObject {
             }
             let payload = try JSONDecoder().decode(AuthResponse.self, from: data)
             KeychainStore.set(payload.token, for: tokenKey)
-            let fresh = BetweenAccount(id: payload.user.id, nickname: payload.user.nickname)
-            persist(fresh)
+            await applyAccount(BetweenAccount(id: payload.user.id, nickname: payload.user.nickname), token: payload.token)
         } catch {
             errorText = t("登录失败，请检查网络后重试", "Sign in failed. Check your connection and try again.")
         }
@@ -223,7 +222,7 @@ final class AuthManager: ObservableObject {
         guard let current = account else {
             return t("请先通过 Apple 登录", "Sign in with Apple first")
         }
-        if let old = current.nickname, old == name, !needsNickname { return nil }
+        if let old = current.nickname, old == name { return nil }
         busy = true
         errorText = nil
         defer { busy = false }
@@ -234,28 +233,16 @@ final class AuthManager: ObservableObject {
             var updated = current
             updated.nickname = name
             persist(updated)
-            needsNickname = false
             return nil
         }
         guard let token = KeychainStore.get(tokenKey) else {
             return t("登录已过期，请重新登录", "Your session expired. Sign in again.")
         }
         do {
-            var request = URLRequest(url: URL(string: BetweenAPI.base + "/me")!)
-            request.httpMethod = "PATCH"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            request.httpBody = try JSONEncoder().encode(["nickname": name])
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse else { throw AuthFailure.server }
-            if http.statusCode == 409 {
-                return t("这个昵称已被占用，换一个试试", "That nickname is taken. Try another.")
-            }
-            guard http.statusCode == 200 else { throw AuthFailure.server }
-            let envelope = try JSONDecoder().decode(AuthUserEnvelope.self, from: data)
-            persist(BetweenAccount(id: envelope.user.id, nickname: envelope.user.nickname ?? name))
-            needsNickname = false
+            persist(try await patchNickname(name, token: token))
             return nil
+        } catch AuthFailure.nicknameTaken {
+            return t("这个昵称已被占用，换一个试试", "That nickname is taken. Try another.")
         } catch {
             return t("保存昵称失败，请稍后再试", "Could not save the nickname. Try again.")
         }
@@ -304,9 +291,50 @@ final class AuthManager: ObservableObject {
         return BetweenAccount(id: envelope.user.id, nickname: envelope.user.nickname)
     }
 
+    private func patchNickname(_ name: String, token: String) async throws -> BetweenAccount {
+        var request = URLRequest(url: URL(string: BetweenAPI.base + "/me")!)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(["nickname": name])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AuthFailure.server }
+        if http.statusCode == 409 { throw AuthFailure.nicknameTaken }
+        if http.statusCode == 401 { throw AuthFailure.unauthorized }
+        guard http.statusCode == 200 else { throw AuthFailure.server }
+        let envelope = try JSONDecoder().decode(AuthUserEnvelope.self, from: data)
+        return BetweenAccount(id: envelope.user.id, nickname: envelope.user.nickname ?? name)
+    }
+
+    /// A new account may come back without a nickname. Fill in a random one so
+    /// the app never blocks on nickname setup; the user can rename it anytime.
+    private func applyAccount(_ incoming: BetweenAccount, token: String?) async {
+        guard incoming.nickname?.isEmpty ?? true else {
+            persist(incoming)
+            return
+        }
+        for _ in 0..<3 {
+            let generated = NicknameRule.random(zh: zh)
+            if let token {
+                do {
+                    persist(try await patchNickname(generated, token: token))
+                    return
+                } catch AuthFailure.nicknameTaken {
+                    continue
+                } catch {
+                    break
+                }
+            }
+            persist(BetweenAccount(id: incoming.id, nickname: generated))
+            return
+        }
+        var fallback = incoming
+        fallback.nickname = NicknameRule.random(zh: zh)
+        persist(fallback)
+    }
+
     private func persist(_ fresh: BetweenAccount) {
         account = fresh
-        needsNickname = (fresh.nickname?.isEmpty ?? true)
         if let data = try? JSONEncoder().encode(fresh) {
             UserDefaults.standard.set(data, forKey: cacheKey)
         }
@@ -321,12 +349,12 @@ final class AuthManager: ObservableObject {
         KeychainStore.remove(tokenKey)
         UserDefaults.standard.removeObject(forKey: cacheKey)
         account = nil
-        needsNickname = false
     }
 }
 
 private enum AuthFailure: Error {
     case unauthorized
+    case nicknameTaken
     case server
 }
 

@@ -85,7 +85,7 @@ struct ContentView: View {
                 if let story = snapshotStory { snapshotPage(story,width:w,height:h,top:top,bottom:bottom).zIndex(22).transition(.opacity) }
                 if guideVisible { guideCard(width:w,bottom:bottom).zIndex(29) }
                 if let reason = loginPrompt { loginPromptCard(reason,width:w,height:h,top:top,bottom:bottom).zIndex(31) }
-                if auth.needsNickname || nicknameMode { nicknameSheet(width:w,height:h,top:top,bottom:bottom).zIndex(32) }
+                if nicknameMode { nicknameSheet(width:w,height:h,top:top,bottom:bottom).zIndex(32) }
                 if let text = toastText { toastView(text,bottom:bottom).zIndex(33) }
             }.frame(width:w,height:h).clipped().offset(y:-top)
                 .animation(reduceMotion ? nil:.easeInOut(duration:0.45),value:devilCount)
@@ -97,7 +97,6 @@ struct ContentView: View {
                 if auth.account != nil {withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)){loginPrompt=nil}}
                 nicknameDraft=auth.account?.nickname ?? ""
                 nicknameError=nil
-                if auth.account != nil {DispatchQueue.main.asyncAfter(deadline:.now()+0.45){if auth.needsNickname{nicknameFocused=true}}}
             }
             .onReceive(Self.expiryTimer){ _ in pruneExpired() }
             .onReceive(NotificationCenter.default.publisher(for:UIResponder.keyboardWillChangeFrameNotification)){ note in
@@ -144,6 +143,21 @@ struct ContentView: View {
         for (aid,reps) in state.replies { for si in model.stories.indices {
             guard let ai=model.stories[si].answers.firstIndex(where:{$0.id==aid}) else{continue}
             for r in reps where !model.stories[si].answers[ai].replies.contains(where:{$0.id==r.id}) { model.stories[si].answers[ai].replies.append(r) } } }
+    }
+    func renameLocalAuthor(from oldName:String,to newName:String){
+        for si in model.stories.indices {
+            for ai in model.stories[si].answers.indices {
+                if model.stories[si].answers[ai].author == oldName {
+                    let answer=model.stories[si].answers[ai]
+                    model.stories[si].answers[ai]=NativeAnswer(id:answer.id,author:newName,side:answer.side,text:answer.text,likes:answer.likes,replies:answer.replies)
+                }
+                for ri in model.stories[si].answers[ai].replies.indices where model.stories[si].answers[ai].replies[ri].author == oldName {
+                    let reply=model.stories[si].answers[ai].replies[ri]
+                    model.stories[si].answers[ai].replies[ri]=NativeReply(id:reply.id,author:newName,text:reply.text)
+                }
+            }
+        }
+        persistLocal()
     }
     func persistLocal(){
         var state=NativeLocalState()
