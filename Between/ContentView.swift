@@ -145,7 +145,7 @@ struct ContentView: View {
                 let travel=H5Design.verticalTravel(area:area,current:cardH,next:nextH)
                 storyCard(story,width:width,height:cardH,interactive:true).scaleEffect(1-0.025*campProgress).offset(x:(camp?.sign ?? 0)*width*0.3*campProgress,y:verticalSign*travel*verticalProgress+edgeOffset).opacity(1-Double(H5Design.fade(verticalProgress)))
                 if let nextStory=next {storyCard(nextStory,width:width,height:nextH).offset(y:-verticalSign*travel*(1-verticalProgress)).opacity(Double(H5Design.fade(verticalProgress))).allowsHitTesting(false)}
-                Text("\(model.index+1) / \(model.stories.count)").font(.system(size:11)).tracking(2).foregroundColor(Color(hex:0x8c787f)).rotationEffect(.degrees(90)).position(x:width-24,y:area/2)
+                Text("\(model.index+1) / \(model.stories.count)").font(.system(size:11)).tracking(2).foregroundColor(Color(hex:0x8c787f)).rotationEffect(.degrees(90)).position(x:width-30,y:area/2)
             } else if model.loading {ProgressView().tint(H5Design.muted)}
             else {VStack(spacing:14){Text(model.error ? l("暂时无法加载","Could not load stories"):l("暂时没有烦恼","No more stories to show")).font(.system(size:24,weight:.bold));if model.error {Button(l("重试","Retry")){Task{await model.load(language)}}}}.padding(30).background(H5Design.card,in:RoundedRectangle(cornerRadius:30))}
         }.frame(width:width,height:area).contentShape(Rectangle())
