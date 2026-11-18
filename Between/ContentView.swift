@@ -291,6 +291,7 @@ struct ContentView: View {
             CompanionRig(angel:false,cheer:devilCount>angelCount ? 1:0,reply:devilCount<angelCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale,buddyScale:place.buddyScale).position(x:place.devilX,y:place.y).opacity(place.devilVisible ? 1:0)
             CompanionRig(angel:true,cheer:angelCount>devilCount ? 1:0,reply:angelCount<devilCount ? 1:0,strong:strong,chinese:zh,reaction:reaction,gesture:gesture,settling:settling,stageScale:place.scale,buddyScale:place.buddyScale).position(x:place.angelX,y:place.y).opacity(place.angelVisible ? 1:0)
         }.allowsHitTesting(!settling && campProgress == 0 && detailStory == nil && (utility == nil || utility == "write" || ["profile-stories","profile-answers","saved","activity"].contains(utility ?? "")))
+            .blur(radius: camp != nil ? panelBlur:0)
             .opacity(keyboardHeight > 0 ? 0:1)
             .opacity(settling && camp == nil ? 0:1)
             .animation(reduceMotion || !motionOn ? nil:.easeInOut(duration:0.25),value:keyboardHeight)
