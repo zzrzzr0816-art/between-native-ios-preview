@@ -38,6 +38,7 @@ struct ContentView: View {
     @State var likePulse: [String: Bool] = [:]
     @State var reportType = "story"
     @State var reportId = ""
+    @State var reportFrom: String? = nil
     @State var snapshotStory: NativeStory? = nil
     @State var reviewed: [String] = []
     @State var loginPrompt: String? = nil
@@ -64,7 +65,11 @@ struct ContentView: View {
     var myName:String { auth.account?.nickname ?? l("你 · 预览","You · preview") }
     var localKey:String { "native.local.v2." + (auth.account?.id ?? "guest") }
     func requireLogin(_ reason:String)->Bool {
-        guard auth.isReady else { loginPrompt = reason; return false }
+        guard auth.isReady else {
+            keyboardHeight=0
+            withAnimation(transitionAnimation){loginPrompt=reason}
+            return false
+        }
         return true
     }
     var body: some View {
@@ -84,10 +89,12 @@ struct ContentView: View {
                     comments(chosen,width:w,height:h,top:top,bottom:bottom).blur(radius:panelBlur).offset(x:-chosen.sign*w*(1-campProgress)).allowsHitTesting((campProgress>0.99 || axis==2) && !settling).zIndex(detailStory != nil ? 23:2)
                 }
                 companions(width:w,top:top,height:h).zIndex(companionsLayer)
-                if let page = utility, page == "write" || page == "more" {
+                if utility != nil {
                     Color(hex:0x302532).opacity(0.40).zIndex(detailStory != nil ? 23.5:5).contentShape(Rectangle()).onTapGesture{closeUtility()}.transition(.opacity)
                 }
-                if let page = utility { utilityPage(page,width:w,height:h,top:top,bottom:bottom).zIndex(detailStory != nil ? 24:10).transition(.opacity.combined(with:.offset(y:12))) }
+                if let page = utility {
+                    utilityPage(page,width:w,height:h,top:top,bottom:bottom).id(page).zIndex(detailStory != nil ? 24:(page == "report" ? 30:10)).transition(pageTransition(page))
+                }
                 if let answer = selectedReply { replyOverlay(answer,width:w,height:h,top:top,bottom:bottom).zIndex(27).transition(.scale(scale:0.94,anchor:.bottomTrailing).combined(with:.opacity)) }
                 if let story = detailStory { detailPage(story,width:w,height:h,top:top,bottom:bottom).zIndex(22).transition(.scale(scale:0.96).combined(with:.opacity)) }
                 if detailStory != nil && camp == nil && utility == nil { detailHandles(width:w,height:h).zIndex(26) }
@@ -209,7 +216,10 @@ struct ContentView: View {
         guard !settling,utility==nil,selectedReply==nil else{return}
         resetIdleHints()
         if axis==nil {axis=abs(value.translation.width)>abs(value.translation.height) ? 0:1}
-        if axis==0 {camp=value.translation.width<0 ? .devil:.angel;campProgress=min(1,abs(value.translation.width)/width)}
+        if axis==0 {
+            if camp == nil {camp=value.translation.width<0 ? .devil:.angel}
+            campProgress=min(1,abs(value.translation.width)/width)
+        }
         else if campProgress==0,let story=model.current {
             let sign:CGFloat=value.translation.height<0 ? -1:1,target=model.index+(sign<0 ? 1:-1)
             if model.stories.indices.contains(target){
@@ -224,7 +234,11 @@ struct ContentView: View {
         if axis==0 {
             let commit=abs(value.translation.width)>max(65,width*0.23);settling=true
             withAnimation(transitionAnimation){campProgress=commit ? 1:0}
-            DispatchQueue.main.asyncAfter(deadline:.now()+0.35){if !commit {camp=nil};axis=nil;settling=false}
+            DispatchQueue.main.asyncAfter(deadline:.now()+0.35){
+                if !commit {camp=nil}
+                axis=nil
+                withAnimation(reduceMotion || !motionOn ? nil:.easeOut(duration:0.2)){settling=false}
+            }
         } else if let target=verticalTarget,let story=model.current {
             let a=H5Design.cardHeight(story.text,width:width,available:area),b=H5Design.cardHeight(model.stories[target].text,width:width,available:area)
             let travel=H5Design.verticalTravel(area:area,current:a,next:b)
@@ -258,6 +272,11 @@ struct ContentView: View {
             .overlay(RoundedRectangle(cornerRadius:30).stroke(Color.white.opacity(0.79),lineWidth:1)).overlay(RoundedRectangle(cornerRadius:24).stroke(Color.white.opacity(0.67),lineWidth:1).padding(7)).shadow(color:Color(hex:0xa46872).opacity(0.17),radius:24,x:0,y:20).shadow(color:Color(hex:0x896d7b).opacity(0.08),radius:6,x:0,y:4)
             .contentShape(RoundedRectangle(cornerRadius:30))
             .onTapGesture {if interactive{openDetail(story)}}
+    }
+    func pageTransition(_ page:String)->AnyTransition {
+        page == "write" || page == "more"
+            ? .move(edge:.bottom).combined(with:.opacity)
+            : .opacity.combined(with:.scale(scale:0.985))
     }
     func openDetail(_ story:NativeStory){
         if let i=model.stories.firstIndex(where:{$0.id==story.id}){model.index=i}

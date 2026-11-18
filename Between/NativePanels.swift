@@ -82,7 +82,7 @@ extension ContentView {
                 } label:{
                     HStack(spacing:5){Image(systemName:isLiked ? "heart.fill":"heart").font(.system(size:15,weight:.light)).scaleEffect(likePulse[answer.id]==true ? 1.45:1);Text("\(answer.likes + (isLiked ? 1:0))").font(.system(size:12))}
                         .foregroundColor(isLiked ? Color(hex:0xb85657):Color(hex:0x897a7a)).padding(.horizontal,11).frame(height:38)
-                        .background(Color(hex:isLiked ? 0xf9e6e2:0xf8f4f2),in:Capsule())
+                        .background(Color(hex:isLiked ? 0xf9e6e2:0xf8f4f2),in:Capsule()).animation(.easeOut(duration:0.18),value:isLiked)
                 }.buttonStyle(PressScale())
                 if mine {
                     Button {guard requireLogin("best") else{return};if isBest {best["\(sid)|\(answer.side)"]=nil}else{best["\(sid)|\(answer.side)"]=answer.id};persistLocal()} label:{
@@ -211,7 +211,7 @@ extension ContentView {
         let reasons = [(l("骚扰或攻击","Harassment or abuse"),"harassment"),(l("仇恨或歧视","Hate or discrimination"),"hate"),(l("涉及人身安全","Safety concern"),"safety"),(l("泄露隐私","Privacy violation"),"privacy"),(l("垃圾信息或其他","Spam or other"),"spam")]
         return VStack(alignment:.leading,spacing:0){
             HStack(spacing:10){
-                Button {openUtility("more")} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x75666d)).frame(width:44,height:44)}.accessibilityLabel(l("返回","Back"))
+                Button {closeReport()} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x75666d)).frame(width:44,height:44)}.accessibilityLabel(l("返回","Back"))
                 Text(l("举报内容","Report content")).font(.system(size:19,weight:.bold)).foregroundColor(Color(hex:0x302b32))
                 Spacer()
             }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,10)
@@ -235,8 +235,16 @@ extension ContentView {
         }.frame(width:width,height:height,alignment:.top).background(Color(hex:0xfffbf9))
     }
     func openReport(_ type:String,_ id:String){
+        composerFocused=false
+        reportFrom = selectedReply != nil ? "reply":(camp != nil ? "comments":(utility == "more" ? "more":nil))
         reportType=type;reportId=id
         openUtility("report")
+    }
+    func closeReport(){
+        let back=reportFrom
+        reportFrom=nil
+        if back == "more" {openUtility("more")}
+        else {withAnimation(transitionAnimation){utility=nil}}
     }
     func confirmReport(){
         guard requireLogin("report") else{return}
@@ -244,7 +252,7 @@ extension ContentView {
         let raw=[sid,reportType,reportId,reportReason].joined(separator:"|")
         if !reports.contains(raw){reports.append(raw)}
         persistLocal()
-        reportType="story";reportId=""
+        reportType="story";reportId="";reportFrom=nil
         withAnimation(transitionAnimation){utility=nil}
         toast(l("举报已提交","Report submitted"))
     }
@@ -285,7 +293,7 @@ extension ContentView {
             LinearGradient(stops:[.init(color:Color(hex:0xf0b3ae),location:0),.init(color:Color(hex:0xfacfc7),location:0.34),.init(color:Color(hex:0xf8efe8),location:0.56),.init(color:Color(hex:0xd9ecf4),location:1)],startPoint:.topLeading,endPoint:.bottomTrailing)
             VStack(spacing:0){
                 HStack{
-                    Button {withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)){detailStory=nil}} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x6a5457)).frame(width:44,height:44)}.accessibilityLabel(l("返回","Back"))
+                    Button {withAnimation(transitionAnimation){detailStory=nil}} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x6a5457)).frame(width:44,height:44)}.accessibilityLabel(l("返回","Back"))
                     Spacer()
                 }.padding(.horizontal,10).padding(.top,top+6)
                 ScrollView {
@@ -395,6 +403,7 @@ extension ContentView {
                     if let error=auth.errorText { Text(error).font(.system(size:11)).foregroundColor(Color(hex:0xb85657)).padding(.top,8) }
                 }.padding(18).frame(maxWidth:.infinity,alignment:.leading)
                     .background(.white,in:RoundedRectangle(cornerRadius:20)).overlay(RoundedRectangle(cornerRadius:20).stroke(Color(hex:0xf1e7e2),lineWidth:1))
+                    .transition(.opacity)
             } else {
                 VStack(alignment:.leading,spacing:0){
                     Text(l("你正在以游客身份浏览","You’re browsing as a guest")).font(.system(size:18,weight:.bold)).foregroundColor(Color(hex:0x3a3038))
@@ -403,8 +412,9 @@ extension ContentView {
                     if let error=auth.errorText { Text(error).font(.system(size:11)).foregroundColor(Color(hex:0xb85657)).padding(.top,9) }
                 }.padding(18).frame(maxWidth:.infinity,alignment:.leading)
                     .background(.white,in:RoundedRectangle(cornerRadius:20)).overlay(RoundedRectangle(cornerRadius:20).stroke(Color(hex:0xf1e7e2),lineWidth:1))
+                    .transition(.opacity)
             }
-        }
+        }.animation(transitionAnimation,value:auth.userId)
     }
     func openNicknameEditor(){
         nicknameDraft=auth.account?.nickname ?? ""
@@ -503,7 +513,7 @@ extension ContentView {
         nicknameError=nil
         withAnimation(transitionAnimation){nicknameMode=false}
     }
-    func openUtility(_ page:String){withAnimation(reduceMotion ? nil:.easeInOut(duration:0.32)){utility=page}}
+    func openUtility(_ page:String){withAnimation(transitionAnimation){utility=page}}
     func profileTile(_ icon:String,iconBG:UInt32,iconColor:UInt32,label:String,count:Int?)->some View {
         VStack(alignment:.leading,spacing:0){
             Text(icon).font(.system(size:20)).foregroundColor(Color(hex:iconColor)).frame(width:34,height:34).background(Color(hex:iconBG),in:RoundedRectangle(cornerRadius:12))
