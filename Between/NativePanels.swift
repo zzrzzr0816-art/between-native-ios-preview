@@ -352,7 +352,7 @@ extension ContentView {
                 Text(l("我的","Me")).font(.system(size:19,weight:.bold)).foregroundColor(Color(hex:0x302b32))
                 Spacer()
                 Button {withAnimation(transitionAnimation){utility=nil}} label:{Text("‹").font(.system(size:32,weight:.light)).foregroundColor(Color(hex:0x75666d)).frame(width:44,height:44)}.accessibilityLabel(l("关闭","Close"))
-            }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,58)
+            }.padding(.horizontal,16).padding(.top,top+12).padding(.bottom,64)
             ScrollView {
                 VStack(alignment:.leading,spacing:0){
                     accountSection.padding(.top,8)

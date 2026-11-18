@@ -26,7 +26,7 @@ jobs:
             ARGS="-preview-fixture -ui-zh"
             if [ "$screen" != "home" ]; then ARGS="$ARGS -ui-$screen"; fi
             xcrun simctl launch --terminate-running-process "$DEVICE" com.example.between.preview $ARGS || true
-            if [ "$screen" = "profile" ]; then sleep 24; else sleep 18; fi
+            if [ "$screen" = "profile" ] || [ "$screen" = "comments" ]; then sleep 26; else sleep 18; fi
             xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/native-$screen.png"
             xcrun simctl spawn "$DEVICE" launchctl list | grep -i between > "$RUNNER_TEMP/state-$screen.txt" || true
             xcrun simctl spawn "$DEVICE" log show --last 40s --predicate 'process == "Between"' --style compact > "$RUNNER_TEMP/log-$screen.txt" 2>&1 || true
