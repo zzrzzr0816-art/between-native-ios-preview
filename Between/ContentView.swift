@@ -234,6 +234,7 @@ struct ContentView: View {
     var companionsLayer:Double {
         if selectedReply != nil { return 28 }
         if detailStory != nil { return 25 }
+        if utility == "write" { return 9 }
         if utility != nil { return 11 }
         if camp != nil { return 12 }
         return 1

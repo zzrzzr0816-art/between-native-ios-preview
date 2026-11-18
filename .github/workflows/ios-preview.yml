@@ -21,12 +21,12 @@ jobs:
           xcrun simctl launch --terminate-running-process "$DEVICE" com.example.between.preview -preview-fixture -ui-zh || true
           sleep 20
           xcrun simctl terminate "$DEVICE" com.example.between.preview || true
-          sleep 2
+          sleep 4
           for screen in profile write comments reply more detail home; do
             ARGS="-preview-fixture -ui-zh"
             if [ "$screen" != "home" ]; then ARGS="$ARGS -ui-$screen"; fi
             xcrun simctl launch --terminate-running-process "$DEVICE" com.example.between.preview $ARGS || true
-            sleep 16
+            if [ "$screen" = "profile" ]; then sleep 24; else sleep 18; fi
             xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/native-$screen.png"
             xcrun simctl spawn "$DEVICE" launchctl list | grep -i between > "$RUNNER_TEMP/state-$screen.txt" || true
             xcrun simctl spawn "$DEVICE" log show --last 40s --predicate 'process == "Between"' --style compact > "$RUNNER_TEMP/log-$screen.txt" 2>&1 || true

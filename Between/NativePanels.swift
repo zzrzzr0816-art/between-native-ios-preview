@@ -137,7 +137,7 @@ extension ContentView {
         let sheetH = keyboardHeight > 0 ? (height-keyboardHeight)*0.88:height*0.88
         let sheetBottom = keyboardHeight > 0 ? height-keyboardHeight:height
         return VStack(spacing:0){
-            sheetHead(l("说说你的烦恼","What's on your mind?"),top:top,padBottom:66)
+            sheetHead(l("说说你的烦恼","What's on your mind?"),top:0,padBottom:8)
             VStack(alignment:.leading,spacing:0){
                 HStack{
                     HStack(spacing:5){Text("✦");Text(l("匿名发布","Anonymous"))}.font(.system(size:12,weight:.bold)).foregroundColor(Color(hex:0xa8737a)).padding(.horizontal,11).padding(.vertical,6).background(Color(hex:0xf7e6e0),in:Capsule())
@@ -169,7 +169,7 @@ extension ContentView {
     }
     func morePage(width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
         VStack(alignment:.leading,spacing:10){
-            sheetHead(l("更多","More"),top:top,padBottom:14)
+            sheetHead(l("更多","More"),top:0,padBottom:14)
             VStack(spacing:10){
                 moreRow("♡ "+l("保存完整讨论","Save discussion")){saveSnapshot()}
                 moreRow("✎ "+l("补充进展","Add an update")){openUtility("update")}
