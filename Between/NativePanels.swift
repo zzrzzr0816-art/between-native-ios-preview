@@ -240,6 +240,7 @@ extension ContentView {
         case "blocked": return AnyView(blockedPage(width:width,height:height,top:top,bottom:bottom))
         case "write": return AnyView(writePage(width:width,height:height,top:top,bottom:bottom))
         case "more": return AnyView(morePage(width:width,height:height,top:top,bottom:bottom))
+        case "help-privacy": return AnyView(helpPrivacyPage(width:width,height:height,bottom:bottom))
         case "report": return AnyView(reportPage(width:width,height:height,top:top,bottom:bottom))
         case "update": return AnyView(updatePage(width:width,height:height,top:top,bottom:bottom))
         default: return AnyView(libraryPage(page,width:width,height:height,top:top,bottom:bottom))
@@ -692,7 +693,15 @@ extension ContentView {
                             profileTile("⊘",iconBG:0xf1ebe9,iconColor:0x89716f,label:l("黑名单","Blocked users"),count:nil)
                         }
                     }.padding(.top,12)
-                    supportLinks
+                    profileSupportActions
+                    Button { openUtility("help-privacy") } label: {
+                        HStack(spacing:6) {
+                            Text(l("帮助与隐私","Help & privacy"))
+                            Image(systemName:"chevron.right").font(.system(size:9,weight:.semibold))
+                        }.font(.system(size:12,weight:.medium)).foregroundColor(Color(hex:0x8a666d))
+                            .frame(maxWidth:.infinity,minHeight:44,alignment:.leading)
+                            .contentShape(Rectangle())
+                    }.buttonStyle(PressScale()).padding(.top,12)
                 }.padding(.horizontal,18).padding(.bottom,bottom+H5Design.navigationHeight+12)
             }
         }.frame(width:width,height:height).background(Color(hex:0xfffbf9))
@@ -708,11 +717,12 @@ extension ContentView {
     }
     var accountSection: some View {
         Group {
-            if let account=auth.account, let nickname=account.nickname, !nickname.isEmpty {
+            if let account=auth.account {
+                let nickname = account.nickname.flatMap { $0.isEmpty ? nil : $0 }
                 VStack(alignment:.leading,spacing:0){
                     HStack(alignment:.top,spacing:10){
                         VStack(alignment:.leading,spacing:5){
-                            Text(nickname).font(.system(size:20,weight:.bold)).foregroundColor(Color(hex:0xffeed1))
+                            Text(nickname ?? l("未设置昵称","No nickname yet")).font(.system(size:20,weight:.bold)).foregroundColor(Color(hex:0xffeed1))
                             HStack(spacing:5){
                                 Text("ID").font(.system(size:9,weight:.bold)).foregroundColor(Color(hex:0xf0cb85)).padding(.horizontal,5).padding(.vertical,2).background(Color(hex:0x4c3e2a),in:Capsule())
                                 Text(account.id).font(.system(size:12,weight:.medium,design:.monospaced)).foregroundColor(Color(hex:0xd7ba8c))
@@ -720,7 +730,7 @@ extension ContentView {
                         }
                         Spacer(minLength:0)
                         Button {openNicknameEditor()} label:{
-                            Text(l("修改昵称","Edit")).font(.system(size:12)).foregroundColor(Color(hex:0xf1d5a3)).padding(.horizontal,11).frame(height:32).background(Color(hex:0x43382b),in:Capsule())
+                            Text(nickname == nil ? l("设置昵称","Set nickname") : l("修改昵称","Edit nickname")).font(.system(size:12)).foregroundColor(Color(hex:0xf1d5a3)).padding(.horizontal,11).frame(height:32).background(Color(hex:0x43382b),in:Capsule())
                         }.buttonStyle(PressScale())
                     }
                     HStack(spacing:9){
@@ -796,37 +806,43 @@ extension ContentView {
         return components.url
     }
 
-    private var supportLinks: some View {
-        let privacy = supportPageURL("BetweenPrivacyPolicyURL") ?? URL(string:"https://minglimaster.com/between/privacy.html")
-        let help = supportPageURL("BetweenSupportURL")
-        let email = supportEmailURL
-        return Group {
-            if privacy != nil || help != nil || email != nil {
-                VStack(alignment:.leading,spacing:12) {
-                    Text(l("帮助与隐私","Help & privacy")).font(.headline)
-                    if let privacy { Link(l("隐私政策","Privacy policy"),destination:privacy) }
-                    if let help { Link(l("客服中心","Support center"),destination:help) }
-                    if let email { Link(l("邮件客服","Email support"),destination:email) }
-                    if auth.isReady && !auth.isPreview {
-                        SupportTicketEntry(auth:auth,chinese:zh).id(auth.userId)
+    private var profileSupportActions: some View {
+        VStack(alignment:.leading,spacing:8) {
+            if auth.isReady && !auth.isPreview {
+                SupportTicketEntry(auth:auth,chinese:zh).id(auth.userId).padding(.top,12)
+            }
+        if !model.preview && moderationConsent {
+            moreRow(l("撤回 AI 数据处理同意","Withdraw consent for AI processing")) {
+                moderationConsent = false
+                let viewer = serverViewer
+                Task {
+                    do {
+                        _ = try await model.mutate("ai-consent/withdraw",fields:[:],viewer:viewer)
+                        toast(l("已撤回并取消待处理任务；已发送的请求无法收回","Consent withdrawn and pending jobs cancelled. Requests already sent cannot be recalled."))
+                    } catch {
+                        toast(l("本机已撤回；服务器任务未确认取消","Withdrawn on this device. Server cancellation was not confirmed."))
                     }
-                    if !model.preview && moderationConsent {
-                        Button(l("撤回 AI 数据处理同意","Withdraw consent for AI processing")) {
-                            moderationConsent = false
-                            let viewer = serverViewer
-                            Task {
-                                do {
-                                    _ = try await model.mutate("ai-consent/withdraw",fields:[:],viewer:viewer)
-                                    toast(l("已撤回并取消待处理任务；已发送的请求无法收回","Consent withdrawn and pending jobs cancelled. Requests already sent cannot be recalled."))
-                                } catch {
-                                    toast(l("本机已撤回；服务器任务未确认取消","Withdrawn on this device. Server cancellation was not confirmed."))
-                                }
-                            }
-                        }
-                    }
-                }.padding(.top,24)
+                }
             }
         }
+        }
+    }
+
+    private func helpPrivacyPage(width:CGFloat,height:CGFloat,bottom:CGFloat)->some View {
+        let privacy = supportPageURL("BetweenPrivacyPolicyURL") ?? URL(string:"https://minglimaster.com/between/privacy.html")
+        let email = supportEmailURL
+        return VStack(alignment:.leading,spacing:4) {
+            sheetHead(l("帮助与隐私","Help & privacy"),top:0)
+            VStack(spacing:8) {
+                if let privacy {
+                    moreRow("↗ " + l("隐私政策","Privacy policy")) { UIApplication.shared.open(privacy) }
+                }
+                if let email {
+                    moreRow("✉ " + l("邮件客服","Email support")) { UIApplication.shared.open(email) }
+                }
+            }.padding(.horizontal,20).padding(.vertical,4)
+        }.padding(.bottom,bottom+12).frame(width:width).background(Color(hex:0xfffbf9))
+            .clipShape(TopRoundedShape(radius:26)).frame(width:width,height:height,alignment:.bottom)
     }
 
     func deleteAccountAndData(){
@@ -890,7 +906,7 @@ extension ContentView {
             Color(hex:0x302532).opacity(0.34).contentShape(Rectangle()).onTapGesture{closeNicknameSheet()}.transition(.opacity)
             VStack(alignment:.leading,spacing:0){
                 HStack{
-                    Text(l("修改昵称","Edit nickname")).font(.system(size:18,weight:.bold)).foregroundColor(Color(hex:0x302b32))
+                    Text(auth.displayName.isEmpty ? l("设置昵称","Set nickname") : l("修改昵称","Edit nickname")).font(.system(size:18,weight:.bold)).foregroundColor(Color(hex:0x302b32))
                     Spacer(minLength:0)
                     Button {closeNicknameSheet()} label:{Text("×").font(.system(size:24,weight:.light)).foregroundColor(Color(hex:0x8d7c7d)).frame(width:34,height:34)}.accessibilityLabel(l("关闭","Close"))
                 }
@@ -1370,9 +1386,8 @@ private struct ReportFeedbackSection: View {
 
     var body: some View {
         VStack(alignment:.leading,spacing:8) {
-            Text(chinese ? "服务器审核回执" : "Server review results").font(.headline)
             if failed {
-                Button(chinese ? "回执加载失败，重试" : "Could not load results. Retry") {
+                Button(chinese ? "举报结果加载失败，重试" : "Could not load results. Retry") {
                     Task { await load() }
                 }
             }

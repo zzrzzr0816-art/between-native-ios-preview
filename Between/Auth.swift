@@ -151,7 +151,10 @@ final class AuthManager: ObservableObject {
     var isGuest: Bool { account == nil }
     var isReady: Bool { account != nil }
     var accountAccessEnabled: Bool {
-        Bundle.main.object(forInfoDictionaryKey:"BetweenAccountAccessEnabled") as? Bool == true
+        if let configured = Bundle.main.object(forInfoDictionaryKey:"BetweenAccountAccessEnabled") as? Bool {
+            return configured
+        }
+        return Bundle.main.bundleIdentifier == "com.dukaili.between"
     }
     func discussionToken(for viewer: String) -> String? {
         guard accountAccessEnabled, !isPreview, account?.id == viewer else { return nil }

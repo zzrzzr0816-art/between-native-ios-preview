@@ -239,7 +239,7 @@ struct ContentView: View {
                     toast(l("已同意，请再次点击发送","Consent saved. Tap send again."))
                 }
             } message: {
-                Text(l("待发布原文会发送给 DeepSeek 做内容安全审核。符合条件的烦恼还可能发送给 DeepSeek 或经 Zhongkey 接入的 Grok 服务，用于生成或复核 AI 建议。请勿填写个人信息。不同意仍可浏览和举报。你可在「帮助与隐私」撤回对后续提交的同意。","Submitted text is sent to DeepSeek for content moderation. Eligible stories may also be sent to DeepSeek or to Grok via Zhongkey to generate or review AI suggestions. Avoid including personal information. You can still browse and report if you decline, and can withdraw consent for future submissions under Help & privacy."))
+                Text(l("待发布原文会发送给 DeepSeek 做内容安全审核。符合条件的烦恼还可能发送给 DeepSeek 或经 Zhongkey 接入的 Grok 服务，用于生成或复核 AI 建议。请勿填写个人信息。不同意仍可浏览和举报。你可在「我的」撤回对后续提交的同意。","Submitted text is sent to DeepSeek for content moderation. Eligible stories may also be sent to DeepSeek or to Grok via Zhongkey to generate or review AI suggestions. Avoid including personal information. You can still browse and report if you decline, and can withdraw consent for future submissions from Me."))
             }
             .task { if model.preview || auth.accountAccessEnabled { await auth.bootstrap() } }
             .onChange(of: scenePhase) { phase in
@@ -258,12 +258,13 @@ struct ContentView: View {
                 hintTask?.cancel()
                 toastTask?.cancel()
             }
-            .onChange(of: auth.userId){ _ in
+            .onChange(of: auth.userId){ userId in
                 let resumeAction = loginPrompt != nil && auth.account != nil
                 reloadLocalForAccount(resumingAction: resumeAction)
                 if auth.account != nil {withAnimation(transitionAnimation){loginPrompt=nil}}
                 nicknameDraft=auth.account?.nickname ?? ""
                 nicknameError=nil
+                if userId != nil, !model.preview, auth.displayName.isEmpty { openNicknameEditor() }
                 if usesLiveFeed { Task { await refreshServerFeed() } }
             }
             .onChange(of: axis) { _ in applyPendingFeedRefresh() }
