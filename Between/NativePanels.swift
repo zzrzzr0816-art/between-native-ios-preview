@@ -725,13 +725,11 @@ extension ContentView {
                             Text(nickname ?? l("未设置昵称","No nickname yet")).font(.system(size:20,weight:.bold)).foregroundColor(Color(hex:0xffeed1))
                             HStack(spacing:5){
                                 Text("ID").font(.system(size:9,weight:.bold)).foregroundColor(Color(hex:0xf0cb85)).padding(.horizontal,5).padding(.vertical,2).background(Color(hex:0x4c3e2a),in:Capsule())
-                                Text(account.id).font(.system(size:12,weight:.medium,design:.monospaced)).foregroundColor(Color(hex:0xd7ba8c))
+                                Text(account.public_id ?? "—").font(.system(size:12,weight:.medium,design:.monospaced)).foregroundColor(Color(hex:0xd7ba8c))
                             }
                         }
                         Spacer(minLength:0)
-                        Button {openNicknameEditor()} label:{
-                            Text(nickname == nil ? l("设置昵称","Set nickname") : l("修改昵称","Edit nickname")).font(.system(size:12)).foregroundColor(Color(hex:0xf1d5a3)).padding(.horizontal,11).frame(height:32).background(Color(hex:0x43382b),in:Capsule())
-                        }.buttonStyle(PressScale())
+
                     }
                     HStack(spacing:9){
                         Button {
@@ -808,9 +806,6 @@ extension ContentView {
 
     private var profileSupportActions: some View {
         VStack(alignment:.leading,spacing:8) {
-            if auth.isReady && !auth.isPreview {
-                SupportTicketEntry(auth:auth,chinese:zh).id(auth.userId).padding(.top,12)
-            }
         if !model.preview && moderationConsent {
             moreRow(l("撤回 AI 数据处理同意","Withdraw consent for AI processing")) {
                 moderationConsent = false
@@ -1411,76 +1406,6 @@ private struct ReportFeedbackSection: View {
     }
 }
 
-private struct SupportTicketEntry: View {
-    @ObservedObject var auth: AuthManager
-    let chinese: Bool
-    @State private var open = false
-    @State private var tickets: [SupportTicket] = []
-    @State private var message = ""
-    @State private var busy = false
-    @State private var status = ""
-
-    private func label(_ zh: String, _ en: String) -> String { chinese ? zh : en }
-
-    var body: some View {
-        Button(label("站内客服","Support tickets")) { open = true }
-            .sheet(isPresented:$open) {
-                NavigationView {
-                    Form {
-                        Section(label("新工单","New ticket")) {
-                            TextEditor(text:$message).frame(minHeight:80)
-                            Text(label("请勿填写密码或验证码。","Do not include passwords or verification codes."))
-                            Button(label("提交","Send")) { Task { await load(sending:true) } }
-                                .disabled(busy || message.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || message.utf16.count > 2000)
-                        }
-                        Section(label("我的工单","My tickets")) {
-                            if !status.isEmpty { Text(status) }
-                            ForEach(tickets) { ticket in
-                                VStack(alignment:.leading,spacing:6) {
-                                    Text(ticket.id).font(.caption)
-                                    Text(ticket.message)
-                                    Text(ticket.closed == nil ? label("待处理","Open") : label("已结单","Closed"))
-                                    if let reply = ticket.reply { Text(reply) }
-                                }
-                            }
-                        }
-                    }
-                    .navigationTitle(label("站内客服","Support tickets"))
-                    .toolbar {
-                        ToolbarItem(placement:.cancellationAction) {
-                            Button(label("关闭","Close")) { open = false }
-                        }
-                        ToolbarItem(placement:.primaryAction) {
-                            Button(label("刷新","Refresh")) { Task { await load() } }.disabled(busy)
-                        }
-                    }
-                    .task { await load() }
-                }.navigationViewStyle(.stack)
-            }
-    }
-
-    @MainActor private func load(sending: Bool = false) async {
-        guard !busy else { return }
-        busy = true
-        defer { busy = false }
-        if sending {
-            do {
-                _ = try await auth.supportTickets(message:message)
-                message = ""
-            } catch {
-                status = label("提交未确认，请先刷新工单列表。","Submission not confirmed. Refresh the list before retrying.")
-                return
-            }
-        }
-        do {
-            tickets = try await auth.supportTickets()
-            status = tickets.isEmpty ? label("暂无工单","No tickets yet") : ""
-        } catch {
-            status = sending ? label("已提交，列表刷新失败。","Submitted, but the list could not refresh.") :
-                label("无法加载工单，请重试。","Could not load tickets. Try again.")
-        }
-    }
-}
 private func replyReveal(from source: CGRect?, to target: CGRect) -> AnyTransition {
     guard let source, !source.isEmpty else { return .opacity }
     return .modifier(

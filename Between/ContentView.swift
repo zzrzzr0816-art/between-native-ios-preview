@@ -258,13 +258,12 @@ struct ContentView: View {
                 hintTask?.cancel()
                 toastTask?.cancel()
             }
-            .onChange(of: auth.userId){ userId in
+            .onChange(of: auth.userId){ _ in
                 let resumeAction = loginPrompt != nil && auth.account != nil
                 reloadLocalForAccount(resumingAction: resumeAction)
                 if auth.account != nil {withAnimation(transitionAnimation){loginPrompt=nil}}
                 nicknameDraft=auth.account?.nickname ?? ""
                 nicknameError=nil
-                if userId != nil, !model.preview, auth.displayName.isEmpty { openNicknameEditor() }
                 if usesLiveFeed { Task { await refreshServerFeed() } }
             }
             .onChange(of: axis) { _ in applyPendingFeedRefresh() }
@@ -840,7 +839,7 @@ struct ContentView: View {
         if camp != nil { return .comments }
         if detailStory != nil { return .detail }
         if utility == "write" { return .write(writePeek) }
-        if utility == "profile" { return .profile }
+        if utility == "profile" || utility == "help-privacy" { return .profile }
         if let u = utility, ["profile-stories","profile-answers","saved","activity","blocked"].contains(u) { return .library }
         return .home
     }
@@ -873,7 +872,7 @@ struct ContentView: View {
     func closeUtility(){
         if utility == "report" { closeReport(); return }
         resetInputFocus()
-        withAnimation(transitionAnimation){utility=nil}
+        withAnimation(transitionAnimation){utility = utility == "help-privacy" ? "profile" : nil}
         resetIdleHints()
     }
     private func resetInputFocus() {

@@ -33,11 +33,13 @@ enum BetweenAPI {
 struct BetweenAccount: Codable, Equatable {
     let id: String
     var nickname: String?
+    var public_id: String? = nil
 }
 
 struct AuthUserPayload: Decodable {
     let id: String
     let nickname: String?
+    let public_id: String?
 }
 
 struct AuthResponse: Decodable {
@@ -145,7 +147,7 @@ final class AuthManager: ObservableObject {
     func usePreviewAccount() {
         guard isPreview else { return }
         errorText = nil
-        account = BetweenAccount(id: "A7K2M9", nickname: zh ? "晚风" : "Nightfall")
+        account = BetweenAccount(id: "A7K2M9", nickname: "AD-9FX2", public_id: "5102793")
     }
 
     var isGuest: Bool { account == nil }
@@ -172,7 +174,7 @@ final class AuthManager: ObservableObject {
     init() {
         if isPreview {
             let args = ProcessInfo.processInfo.arguments
-            account = args.contains("-ui-guest") ? nil : BetweenAccount(id: "A7K2M9", nickname: zh ? "晚风" : "Nightfall")
+            account = args.contains("-ui-guest") ? nil : BetweenAccount(id: "A7K2M9", nickname: "AD-9FX2", public_id: "5102793")
             return
         }
         if KeychainStore.get(tokenKey) != nil, let cached = loadCachedAccount() {
@@ -191,7 +193,7 @@ final class AuthManager: ObservableObject {
         do {
             let fresh = try await fetchMe(token)
             guard !busy, KeychainStore.get(tokenKey) == token else { return }
-            await applyAccount(fresh, token: token)
+            persist(fresh)
         } catch AuthFailure.unauthorized {
             if !busy, KeychainStore.get(tokenKey) == token { clearSession() }
         } catch {
@@ -238,7 +240,7 @@ final class AuthManager: ObservableObject {
                 errorText = t("无法安全保存登录凭证，请解锁设备后重试", "Couldn’t securely save your sign-in. Unlock your device and try again.")
                 return
             }
-            await applyAccount(BetweenAccount(id: payload.user.id, nickname: payload.user.nickname), token: payload.token)
+            persist(BetweenAccount(id: payload.user.id, nickname: payload.user.nickname, public_id: payload.user.public_id))
         } catch AuthFailure.unavailable {
             errorText = t("Apple 登录服务暂不可用，请稍后重试", "Apple sign-in is temporarily unavailable. Try again later.")
         } catch {
@@ -388,7 +390,7 @@ final class AuthManager: ObservableObject {
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response,allowing:[200])
         let envelope = try JSONDecoder().decode(AuthUserEnvelope.self, from: data)
-        return BetweenAccount(id: envelope.user.id, nickname: envelope.user.nickname)
+        return BetweenAccount(id: envelope.user.id, nickname: envelope.user.nickname, public_id: envelope.user.public_id)
     }
 
     private func patchNickname(_ name: String, token: String) async throws -> BetweenAccount {
@@ -401,40 +403,7 @@ final class AuthManager: ObservableObject {
         if (response as? HTTPURLResponse)?.statusCode == 409 { throw AuthFailure.nicknameTaken }
         try validate(response,allowing:[200])
         let envelope = try JSONDecoder().decode(AuthUserEnvelope.self, from: data)
-        return BetweenAccount(id: envelope.user.id, nickname: envelope.user.nickname ?? name)
-    }
-
-    /// A new account may come back without a nickname. Fill in a random one so
-    /// the app never blocks on nickname setup; the user can rename it anytime.
-    private func applyAccount(_ incoming: BetweenAccount, token: String?) async {
-        guard incoming.nickname?.isEmpty ?? true else {
-            persist(incoming)
-            return
-        }
-        for _ in 0..<3 {
-            let generated = NicknameRule.random(zh: zh)
-            if let token {
-                do {
-                    let updated = try await patchNickname(generated, token: token)
-                    guard KeychainStore.get(tokenKey) == token else { return }
-                    persist(updated)
-                    return
-                } catch AuthFailure.nicknameTaken {
-                    continue
-                } catch AuthFailure.unauthorized {
-                    if KeychainStore.get(tokenKey) == token { clearSession() }
-                    return
-                } catch {
-                    break
-                }
-            }
-            persist(BetweenAccount(id: incoming.id, nickname: generated))
-            return
-        }
-        if let token, KeychainStore.get(tokenKey) != token { return }
-        var fallback = incoming
-        fallback.nickname = NicknameRule.random(zh: zh)
-        persist(fallback)
+        return BetweenAccount(id: envelope.user.id, nickname: envelope.user.nickname ?? name, public_id: envelope.user.public_id)
     }
 
     private func persist(_ fresh: BetweenAccount) {
