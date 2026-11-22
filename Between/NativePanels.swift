@@ -836,9 +836,8 @@ extension ContentView {
                     moreRow(l("邮件客服","Email support")) { UIApplication.shared.open(email) }
                 }
             }.padding(.horizontal,20).padding(.vertical,4)
-        }.padding(.bottom,12).frame(width:width).background(Color(hex:0xfffbf9))
+        }.padding(.bottom,bottom+12).frame(width:width).background(Color(hex:0xfffbf9))
             .clipShape(TopRoundedShape(radius:26))
-            .padding(.bottom,H5Design.navigationHeight+bottom)
             .frame(width:width,height:height,alignment:.bottom)
     }
 

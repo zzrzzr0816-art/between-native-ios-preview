@@ -175,7 +175,7 @@ struct ContentView: View {
                         .zIndex(10).transition(pageTransition("profile"))
                 }
                 if let page = utility, page != "profile" {
-                    utilityPage(page,width:w,height:h,top:top,bottom:bottom).accessibilityHidden(selectedReport != nil).id(page).zIndex(page == "report" ? 30 : (companionMode == .library ? 11 : 10)).transition(pageTransition(page))
+                    utilityPage(page,width:w,height:h,top:top,bottom:bottom).accessibilityHidden(selectedReport != nil).id(page).zIndex(page == "report" ? 30 : (page == "help-privacy" ? 19 : (companionMode == .library ? 11 : 10))).transition(pageTransition(page))
                 }
                 if let record = selectedReport {
                     Color(hex:0x302532).opacity(0.22).contentShape(Rectangle())
