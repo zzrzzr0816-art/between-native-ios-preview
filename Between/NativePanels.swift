@@ -830,14 +830,16 @@ extension ContentView {
             sheetHead(l("帮助与隐私","Help & privacy"),top:0)
             VStack(spacing:8) {
                 if let privacy {
-                    moreRow("↗ " + l("隐私政策","Privacy policy")) { UIApplication.shared.open(privacy) }
+                    moreRow(l("隐私政策","Privacy policy")) { UIApplication.shared.open(privacy) }
                 }
                 if let email {
-                    moreRow("✉ " + l("邮件客服","Email support")) { UIApplication.shared.open(email) }
+                    moreRow(l("邮件客服","Email support")) { UIApplication.shared.open(email) }
                 }
             }.padding(.horizontal,20).padding(.vertical,4)
-        }.padding(.bottom,bottom+12).frame(width:width).background(Color(hex:0xfffbf9))
-            .clipShape(TopRoundedShape(radius:26)).frame(width:width,height:height,alignment:.bottom)
+        }.padding(.bottom,12).frame(width:width).background(Color(hex:0xfffbf9))
+            .clipShape(TopRoundedShape(radius:26))
+            .padding(.bottom,H5Design.navigationHeight+bottom)
+            .frame(width:width,height:height,alignment:.bottom)
     }
 
     func deleteAccountAndData(){
