@@ -120,7 +120,7 @@ struct ContentView: View {
     var localKey:String { auth.localStorageKey }
     func requireLogin(_ reason:String)->Bool {
         let submitsContent = ["publish", "respond", "reply", "update"].contains(reason)
-        if !auth.isReady && (submitsContent || model.preview) {
+        if !auth.isReady && (reason != "report" || model.preview) {
             composerFocused = false
             replyFocused = false
             writingFocused = false
