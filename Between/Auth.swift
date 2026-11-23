@@ -58,7 +58,7 @@ struct SupportTicket: Decodable, Identifiable {
 
 enum NicknameRule {
     static func normalize(_ raw: String) -> String {
-        raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        raw.trimmingCharacters(in: .whitespacesAndNewlines).precomposedStringWithCompatibilityMapping
     }
 
     static func random(zh: Bool) -> String {
@@ -72,10 +72,11 @@ enum NicknameRule {
         let name = normalize(raw)
         if name.count < 2 { return zh ? "昵称至少需要 2 个字符" : "Use at least 2 characters" }
         if name.count > 16 { return zh ? "昵称最多 16 个字符" : "Use at most 16 characters" }
-        var allowed = CharacterSet.letters
-        allowed.insert(charactersIn: "0123456789_-")
-        if name.unicodeScalars.contains(where: { !allowed.contains($0) }) {
-            return zh ? "只支持中英文、数字、下划线和短横线" : "Use letters, numbers, _ or - only"
+        let contactHints = "微信|微訊|微讯|薇信|威信|加微|加我|扣扣|企鹅号|手机号|电话|电郵|电邮|邮箱|联系|聯絡|聯繫|账号|帳號|私信|私聊|二维码|二維碼|小红书|小紅書|抖音|qq|wechat|weixin|vx|wx|whatsapp|telegram|discord|instagram|tiktok|gmail|outlook|hotmail|yahoo|email|snapchat|facebook|https?|www|dotcom|[零〇一二三四五六七八九十幺壹贰叁肆伍陆柒捌玖]{4,}"
+        if name.range(of: "^[A-Za-z一-鿿]{2,16}$", options: .regularExpression) == nil
+            || name.range(of: contactHints, options: [.caseInsensitive, .regularExpression]) != nil {
+            return zh ? "昵称仅支持中文汉字和英文字母，不能包含联系方式或引导联系的内容"
+                      : "Use Chinese or English letters only. Contact details and contact invitations are not allowed."
         }
         return nil
     }
@@ -278,11 +279,11 @@ final class AuthManager: ObservableObject {
     func submitNickname(_ raw: String) async -> String? {
         guard !busy else { return t("请稍候再试", "Try again in a moment") }
         let name = NicknameRule.normalize(raw)
-        if let message = NicknameRule.validate(name, zh: zh) { return message }
         guard let current = account else {
             return t("请先通过 Apple 登录", "Sign in with Apple first")
         }
-        if let old = current.nickname, old == name { return nil }
+        if current.nickname == name { return nil }
+        if let message = NicknameRule.validate(name, zh: zh) { return message }
         busy = true
         errorText = nil
         defer { busy = false }
@@ -348,7 +349,7 @@ final class AuthManager: ObservableObject {
         errorText = nil
         defer { busy = false }
         if !isPreview {
-            let reason = t("输入 iPhone 锁屏密码以删除 Between 账号", "Enter your iPhone passcode to delete your Between account")
+            let reason = t("输入 iPhone 锁屏密码以删除 HaloHorn 账号", "Enter your iPhone passcode to delete your HaloHorn account")
             let status = await Task.detached {
                 KeychainStore.verifyDevicePasscode(reason: reason)
             }.value

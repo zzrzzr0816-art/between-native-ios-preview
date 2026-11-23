@@ -919,7 +919,7 @@ extension ContentView {
                         .onChange(of:nicknameDraft){ value in if value.count>16 {nicknameDraft=String(value.prefix(16))} }
                 }.background(Color(hex:0xf7f1ee),in:RoundedRectangle(cornerRadius:15)).overlay(RoundedRectangle(cornerRadius:15).stroke(Color(hex:0xeee4df),lineWidth:1)).padding(.top,16)
                 HStack{
-                    Text(nicknameError ?? l("2–16 个字符，支持中英文、数字、_ 和 -","2–16 characters: letters, numbers, _ or -")).font(.system(size:11)).foregroundColor(nicknameError==nil ? Color(hex:0xa29490):Color(hex:0xb85657)).lineSpacing(3)
+                    Text(nicknameError ?? l("2–16 个汉字或英文字母，不可填写联系方式","2–16 Chinese or English letters. No contact details.")).font(.system(size:11)).foregroundColor(nicknameError==nil ? Color(hex:0xa29490):Color(hex:0xb85657)).lineSpacing(3)
                     Spacer(minLength:0)
                     Text("\(nicknameDraft.count)/16").font(.system(size:10)).foregroundColor(Color(hex:0xb0a29d))
                 }.padding(.top,9)

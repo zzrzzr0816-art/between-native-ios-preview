@@ -496,7 +496,7 @@ struct ContentView: View {
     }
     func homeHeader(width:CGFloat,top:CGFloat)->some View {
         ZStack(alignment:.topLeading) {
-            (Text("between").foregroundColor(Color(hex:0x42353f))+Text(".").foregroundColor(Color(hex:0xe0776e))).font(.system(size:23,weight:.heavy)).tracking(-1.5).frame(height:42).position(x:69,y:top+37)
+            (Text("HaloHorn").foregroundColor(Color(hex:0x42353f))+Text(".").foregroundColor(Color(hex:0xe0776e))).font(.system(size:23,weight:.heavy)).tracking(-1.5).frame(height:42).position(x:77,y:top+37)
             HStack(spacing:7){
                 Button(zh ? "中文":"EN"){
                     guard !settling, axis == nil else { return }
