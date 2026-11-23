@@ -1,0 +1,47 @@
+﻿name: Native iOS simulator preview
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and capture every screen
+        run: |
+          set -euo pipefail
+          xcodebuild -project Between.xcodeproj -target Between -configuration Debug -sdk iphonesimulator CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/between-build" CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/build.log" || { cat "$RUNNER_TEMP/build.log"; exit 1; }
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for k,v in d["devices"].items() if "iOS" in k for x in v if x["name"] in ("iPhone 17 Pro Max", "iPhone 16 Pro Max")))')
+          xcrun simctl boot "$DEVICE"
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl status_bar "$DEVICE" override --time "9:41" --dataNetwork wifi --wifiBars 3 --batteryState charged --batteryLevel 100
+          xcrun simctl install "$DEVICE" "$RUNNER_TEMP/between-build/Between.app"
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.example.between.preview -preview-fixture -ui-zh || true
+          sleep 5
+          xcrun simctl terminate "$DEVICE" com.example.between.preview || true
+          sleep 4
+          for screen in home detail profile; do
+            ARGS="-preview-fixture -ui-zh"
+            if [ "$screen" != "home" ]; then ARGS="$ARGS -ui-$screen"; fi
+            xcrun simctl launch --terminate-running-process "$DEVICE" com.example.between.preview $ARGS || true
+            if [ "$screen" = "profile" ] || [ "$screen" = "comments" ]; then sleep 26; else sleep 18; fi
+            xcrun simctl io "$DEVICE" screenshot "$RUNNER_TEMP/native-$screen.png"
+            xcrun simctl spawn "$DEVICE" launchctl list | grep -i between > "$RUNNER_TEMP/state-$screen.txt" || true
+            xcrun simctl spawn "$DEVICE" log show --last 40s --predicate 'process == "Between"' --style compact > "$RUNNER_TEMP/log-$screen.txt" 2>&1 || true
+            mkdir -p "$RUNNER_TEMP/crash"
+            cp ~/Library/Logs/DiagnosticReports/*Between* "$RUNNER_TEMP/crash/" 2>/dev/null || true
+            xcrun simctl terminate "$DEVICE" com.example.between.preview || true
+            sleep 2
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-preview
+          path: |
+            ${{ runner.temp }}/native-*.png
+            ${{ runner.temp }}/log-*.txt
+            ${{ runner.temp }}/state-*.txt
+            ${{ runner.temp }}/crash/*
+          retention-days: 3
+          if-no-files-found: warn
