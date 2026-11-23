@@ -728,7 +728,11 @@ extension ContentView {
                             }
                         }
                         Spacer(minLength:0)
-
+                        Button { openNicknameEditor() } label: {
+                            Label(l("修改昵称","Edit nickname"),systemImage:"pencil")
+                                .font(.system(size:12)).foregroundColor(Color(hex:0xe9dfd1))
+                                .padding(.horizontal,10).frame(minHeight:44)
+                        }.buttonStyle(PressScale()).disabled(auth.busy)
                     }
                     HStack(spacing:9){
                         Button {
