@@ -84,6 +84,30 @@ enum NicknameRule {
 private enum KeychainStore {
     static let service = "com.example.between.account"
 
+    static func verifyDevicePasscode(reason: String) -> OSStatus {
+        guard let access = SecAccessControlCreateWithFlags(
+            nil, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, .devicePasscode, nil
+        ) else { return errSecAuthFailed }
+
+        let item: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service + ".deletion",
+            kSecAttrAccount as String: UUID().uuidString
+        ]
+        var add = item
+        add[kSecAttrAccessControl as String] = access
+        add[kSecValueData as String] = Data([0])
+        let status = SecItemAdd(add as CFDictionary, nil)
+        guard status == errSecSuccess else { return status }
+        defer { SecItemDelete(item as CFDictionary) }
+
+        var query = item
+        query[kSecReturnData as String] = true
+        query[kSecUseOperationPrompt as String] = reason
+        var result: CFTypeRef?
+        return SecItemCopyMatching(query as CFDictionary, &result)
+    }
+
     static func set(_ value: String, for key: String) -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -324,6 +348,16 @@ final class AuthManager: ObservableObject {
         errorText = nil
         defer { busy = false }
         if !isPreview {
+            let reason = t("输入 iPhone 锁屏密码以删除 Between 账号", "Enter your iPhone passcode to delete your Between account")
+            let status = await Task.detached {
+                KeychainStore.verifyDevicePasscode(reason: reason)
+            }.value
+            guard status == errSecSuccess else {
+                if status != errSecUserCanceled {
+                    errorText = t("锁屏密码验证未完成。请确认已设置 iPhone 锁屏密码，再重试。", "Passcode verification did not finish. Make sure your iPhone has a passcode and try again.")
+                }
+                return false
+            }
             guard let token = KeychainStore.get(tokenKey) else {
                 errorText = t("登录已过期，请重新登录", "Your session expired. Sign in again.")
                 return false

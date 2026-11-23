@@ -709,7 +709,7 @@ extension ContentView {
             .alert(isPresented:$confirmDeleteAccount){
                 Alert(
                     title:Text(l("删除账号？","Delete account?")),
-                    message:Text(l("此操作会请求删除账号及其在线数据，并使该账号的登录失效。备份或已交给第三方处理的副本不一定同步删除。","This requests deletion of your account and its online data and invalidates its sessions. Backup copies or copies already shared for third-party processing may not be deleted at the same time.")),
+                    message:Text(l("下一步需要输入 iPhone 锁屏密码。此操作会请求删除账号及其在线数据，并使该账号的登录失效。备份或已交给第三方处理的副本不一定同步删除。","Next, enter your iPhone passcode. This requests deletion of your account and its online data and invalidates its sessions. Backup copies or copies already shared for third-party processing may not be deleted at the same time.")),
                     primaryButton:.destructive(Text(l("删除","Delete"))){deleteAccountAndData()},
                     secondaryButton:.cancel(Text(l("取消","Cancel")))
                 )
@@ -847,7 +847,7 @@ extension ContentView {
             if await auth.deleteAccount() {
                 NativeLocalStorage.remove(from:.standard,key:key)
                 reloadLocalForAccount()
-                withAnimation(transitionAnimation){utility=nil;nicknameMode=false}
+                withAnimation(transitionAnimation){utility=nil;nicknameMode=false;loginPrompt="register"}
                 toast(l("账号已删除","Account deleted"))
             }
         }
@@ -869,6 +869,7 @@ extension ContentView {
     func loginPromptCard(_ reason:String,width:CGFloat,height:CGFloat,top:CGFloat,bottom:CGFloat)->some View {
         let title:String
         switch reason {
+        case "register": title=l("注册新账号","Create a new account")
         case "publish": title=l("登录后就能发布烦恼","Sign in to share a story")
         case "respond", "reply": title=l("登录后就能加入讨论","Sign in to join the conversation")
         case "like": title=l("登录后就能点赞","Sign in to like")
