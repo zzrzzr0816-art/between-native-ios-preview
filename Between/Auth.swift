@@ -83,7 +83,7 @@ enum NicknameRule {
 }
 
 private enum KeychainStore {
-    static let service = "com.example.between.account"
+    static let service = "com.dukaili.halohorn.account"
 
     static func verifyDevicePasscode(reason: String) -> OSStatus {
         guard let access = SecAccessControlCreateWithFlags(
@@ -181,7 +181,7 @@ final class AuthManager: ObservableObject {
         if let configured = Bundle.main.object(forInfoDictionaryKey:"BetweenAccountAccessEnabled") as? Bool {
             return configured
         }
-        return Bundle.main.bundleIdentifier == "com.dukaili.between"
+        return Bundle.main.bundleIdentifier == "com.dukaili.halohorn"
     }
     func discussionToken(for viewer: String) -> String? {
         guard accountAccessEnabled, !isPreview, account?.id == viewer else { return nil }
