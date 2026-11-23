@@ -693,7 +693,6 @@ extension ContentView {
                             profileTile("⊘",iconBG:0xf1ebe9,iconColor:0x89716f,label:l("黑名单","Blocked users"),count:nil)
                         }
                     }.padding(.top,12)
-                    profileSupportActions
                     Button { openUtility("help-privacy") } label: {
                         HStack(spacing:6) {
                             Text(l("帮助与隐私","Help & privacy"))
@@ -804,10 +803,10 @@ extension ContentView {
         return components.url
     }
 
-    private var profileSupportActions: some View {
+    private var moderationPrivacyAction: some View {
         VStack(alignment:.leading,spacing:8) {
         if !model.preview && moderationConsent {
-            moreRow(l("撤回 AI 数据处理同意","Withdraw consent for AI processing")) {
+            moreRow(l("撤回审核授权","Withdraw moderation consent")) {
                 moderationConsent = false
                 let viewer = serverViewer
                 Task {
@@ -835,6 +834,7 @@ extension ContentView {
                 if let email {
                     moreRow(l("邮件客服","Email support")) { UIApplication.shared.open(email) }
                 }
+                moderationPrivacyAction
             }.padding(.horizontal,20).padding(.vertical,4)
         }.padding(.bottom,bottom+12).frame(width:width).background(Color(hex:0xfffbf9))
             .clipShape(TopRoundedShape(radius:26))

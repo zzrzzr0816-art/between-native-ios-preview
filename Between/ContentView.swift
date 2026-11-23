@@ -237,7 +237,7 @@ struct ContentView: View {
                     toast(l("已同意，请再次点击发送","Consent saved. Tap send again."))
                 }
             } message: {
-                Text(l("待发布原文会发送给 DeepSeek 做内容安全审核。请勿填写个人信息。不同意仍可浏览和举报。你可在「我的」撤回对后续提交的同意。","Submitted text is sent to DeepSeek for content moderation. Avoid including personal information. You can still browse and report if you decline, and can withdraw consent for future submissions from Me."))
+                Text(l("待发布原文会发送给 DeepSeek 做内容安全审核。请勿填写个人信息。不同意可继续浏览和举报，发帖和回复将无法提交。你可在「我的 → 帮助与隐私」撤回授权。","Submitted text is sent to DeepSeek for content moderation. Avoid including personal information. If you decline, you can still browse and report. Posting and replying require consent. To withdraw consent, go to Me → Help & Privacy."))
             }
             .task { if model.preview || auth.accountAccessEnabled { await auth.bootstrap() } }
             .onChange(of: scenePhase) { phase in
