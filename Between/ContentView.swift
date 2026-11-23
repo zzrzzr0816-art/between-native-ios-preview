@@ -119,23 +119,21 @@ struct ContentView: View {
     var myName:String { auth.account?.nickname ?? l("你 · 预览","You · preview") }
     var localKey:String { auth.localStorageKey }
     func requireLogin(_ reason:String)->Bool {
-        if !model.preview {
-            if ["publish","respond","reply","update"].contains(reason), !moderationConsent {
-                composerFocused = false
-                replyFocused = false
-                writingFocused = false
-                writeFieldFocused = false
-                asksModerationConsent = true
-                return false
-            }
-            return true
-        }
-        guard auth.isReady else {
+        let submitsContent = ["publish", "respond", "reply", "update"].contains(reason)
+        if !auth.isReady && (submitsContent || model.preview) {
             composerFocused = false
             replyFocused = false
             writingFocused = false
             writeFieldFocused = false
-            withAnimation(transitionAnimation){loginPrompt=reason}
+            withAnimation(transitionAnimation) { loginPrompt = reason }
+            return false
+        }
+        if submitsContent && !model.preview && !moderationConsent {
+            composerFocused = false
+            replyFocused = false
+            writingFocused = false
+            writeFieldFocused = false
+            asksModerationConsent = true
             return false
         }
         return true
